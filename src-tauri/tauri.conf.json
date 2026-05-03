@@ -10,14 +10,36 @@
     "frontendDist": "../dist"
   },
   "app": {
-    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "withGlobalTauri": false,
     "windows": [
       {
+        "label": "popover",
         "title": "walli",
-        "width": 800,
-        "height": 600
+        "url": "index.html#/",
+        "width": 360,
+        "height": 480,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "resizable": false
+      },
+      {
+        "label": "settings",
+        "title": "walli — Settings",
+        "url": "index.html#/settings",
+        "width": 720,
+        "height": 560,
+        "visible": false,
+        "resizable": true
       }
     ],
+    "trayIcon": {
+      "iconPath": "icons/tray.png",
+      "iconAsTemplate": true
+    },
     "security": {
       "csp": null
     }
