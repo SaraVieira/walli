@@ -1,10 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import "./index.css";
+import PopoverPage from "./routes/popover/Page";
+import SettingsPage from "./routes/settings/Page";
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <HashRouter>
+      <Routes>
+        <Route path="/" element={<PopoverPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Routes>
+    </HashRouter>
   </React.StrictMode>,
 );

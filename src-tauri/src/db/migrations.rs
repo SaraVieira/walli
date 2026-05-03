@@ -1,1 +1,71 @@
-// implemented in phase 2
+use rusqlite::Connection;
+
+pub const MIGRATIONS: &[&str] = &[
+    // 0001 — initial schema
+    r#"
+    CREATE TABLE collections (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        created_at INTEGER NOT NULL
+    );
+    CREATE TABLE collection_tags (
+        collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+        tag TEXT NOT NULL,
+        PRIMARY KEY (collection_id, tag)
+    );
+    CREATE TABLE wallpapers (
+        id INTEGER PRIMARY KEY,
+        source TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        photographer TEXT,
+        source_url TEXT,
+        file_path TEXT NOT NULL,
+        is_local INTEGER NOT NULL DEFAULT 0,
+        download_tracked INTEGER NOT NULL DEFAULT 0,
+        width INTEGER,
+        height INTEGER,
+        fetched_at INTEGER NOT NULL,
+        UNIQUE (source, source_id)
+    );
+    CREATE TABLE history (
+        id INTEGER PRIMARY KEY,
+        wallpaper_id INTEGER NOT NULL REFERENCES wallpapers(id),
+        set_at INTEGER NOT NULL,
+        display_id TEXT
+    );
+    CREATE INDEX idx_history_set_at ON history(set_at DESC);
+    CREATE TABLE favorites (
+        wallpaper_id INTEGER PRIMARY KEY REFERENCES wallpapers(id),
+        favorited_at INTEGER NOT NULL
+    );
+    CREATE TABLE settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    INSERT INTO settings (key, value) VALUES
+        ('interval_seconds', '3600'),
+        ('per_display_mode', 'false'),
+        ('paused', 'false'),
+        ('source_unsplash_enabled', 'true'),
+        ('source_wallhaven_enabled', 'true'),
+        ('source_bing_enabled', 'true'),
+        ('source_apod_enabled', 'true'),
+        ('source_local_enabled', 'false');
+    "#,
+];
+
+pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
+    conn.execute_batch("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)")?;
+    let current: i64 = conn
+        .query_row("SELECT COALESCE(MAX(version), 0) FROM schema_version", [], |r| r.get(0))?;
+    for (i, sql) in MIGRATIONS.iter().enumerate() {
+        let v = (i as i64) + 1;
+        if v > current {
+            let tx = conn.transaction()?;
+            tx.execute_batch(sql)?;
+            tx.execute("INSERT INTO schema_version (version) VALUES (?)", [v])?;
+            tx.commit()?;
+        }
+    }
+    Ok(())
+}
