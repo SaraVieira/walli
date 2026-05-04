@@ -3,8 +3,6 @@ import type { Settings } from "../../../shared/types";
 const SOURCES: { key: keyof Settings; label: string }[] = [
   { key: "source_unsplash_enabled", label: "Unsplash" },
   { key: "source_bing_enabled", label: "Bing daily" },
-  { key: "source_apod_enabled", label: "NASA APOD" },
-  { key: "source_local_enabled", label: "Local folder" },
 ];
 
 export default function SourceToggles(props: {

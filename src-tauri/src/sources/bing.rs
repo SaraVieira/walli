@@ -15,6 +15,7 @@ struct BingImg {
     copyright: Option<String>,
     copyrightlink: Option<String>,
     startdate: String,
+    title: Option<String>,
 }
 
 #[async_trait]
@@ -40,9 +41,9 @@ impl WallpaperSource for Bing {
             source: SourceKind::Bing,
             source_id: format!("{}-en-US", img.startdate),
             photographer: img.copyright,
+            title: img.title,
             source_url: img.copyrightlink,
             image_url: Some(full_url),
-            local_path: None,
             download_location: None,
             width: None,
             height: None,

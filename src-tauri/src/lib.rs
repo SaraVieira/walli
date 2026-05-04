@@ -56,7 +56,6 @@ pub fn run() {
             commands::settings::update_settings,
             commands::settings::set_api_key,
             commands::settings::clear_api_key,
-            commands::settings::pick_local_folder,
             commands::settings::set_login_at_startup,
             commands::settings::open_settings_window,
 

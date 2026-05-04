@@ -22,12 +22,14 @@ async fn upsert_wallpaper_and_history() {
         source: "unsplash".into(),
         source_id: "abc".into(),
         photographer: Some("alice".into()),
+        title: Some("Test photo".into()),
         source_url: None,
         file_path: "/tmp/a.jpg".into(),
         is_local: false,
         width: Some(1920),
         height: Some(1080),
         fetched_at: 1,
+        is_favorite: false,
     };
     let id = queries::upsert_wallpaper(&pool, &w).unwrap();
     assert!(id > 0);
@@ -47,12 +49,14 @@ async fn favorite_toggles() {
         source: "bing".into(),
         source_id: "x".into(),
         photographer: None,
+        title: None,
         source_url: None,
         file_path: "/tmp/b.jpg".into(),
         is_local: false,
         width: None,
         height: None,
         fetched_at: 0,
+        is_favorite: false,
     };
     let id = queries::upsert_wallpaper(&pool, &w).unwrap();
     assert!(queries::toggle_favorite(&pool, id, 1).unwrap());
@@ -62,15 +66,31 @@ async fn favorite_toggles() {
 #[tokio::test]
 async fn collection_crud() {
     let (pool, _dir) = fresh_pool().await;
+    let baseline = queries::list_collections(&pool).unwrap().len();
     let c = queries::create_collection(&pool, "Nature", &["mountains".into(), "forest".into()], 0)
         .unwrap();
     assert_eq!(c.tags.len(), 2);
     let updated = queries::update_collection(&pool, c.id, "Nature 2", &["ocean".into()]).unwrap();
     assert_eq!(updated.tags, vec!["ocean"]);
-    let listed = queries::list_collections(&pool).unwrap();
-    assert_eq!(listed.len(), 1);
+    assert_eq!(queries::list_collections(&pool).unwrap().len(), baseline + 1);
     queries::delete_collection(&pool, c.id).unwrap();
-    assert!(queries::list_collections(&pool).unwrap().is_empty());
+    assert_eq!(queries::list_collections(&pool).unwrap().len(), baseline);
+}
+
+#[tokio::test]
+async fn default_collections_seeded() {
+    let (pool, _dir) = fresh_pool().await;
+    let names: Vec<String> = queries::list_collections(&pool)
+        .unwrap()
+        .into_iter()
+        .map(|c| c.name)
+        .collect();
+    for expected in ["Featured", "Wallpapers", "Space"] {
+        assert!(
+            names.iter().any(|n| n == expected),
+            "missing default collection {expected}, got {names:?}"
+        );
+    }
 }
 
 #[tokio::test]

@@ -9,7 +9,17 @@ type State = AppState & {
   next: () => Promise<void>;
   setPaused: (p: boolean) => Promise<void>;
   clearError: () => void;
+  beginLoading: () => void;
 };
+
+let nextTimeout: ReturnType<typeof setTimeout> | null = null;
+
+function clearNextTimeout() {
+  if (nextTimeout !== null) {
+    clearTimeout(nextTimeout);
+    nextTimeout = null;
+  }
+}
 
 export const useWallpaperStore = create<State>((set) => ({
   current: null,
@@ -29,18 +39,41 @@ export const useWallpaperStore = create<State>((set) => ({
     }
   },
   next: async () => {
-    await ipc.nextNow();
+    set({ loading: true });
+    clearNextTimeout();
+    nextTimeout = setTimeout(() => {
+      nextTimeout = null;
+      useWallpaperStore.setState({ loading: false });
+    }, 30000);
+    try {
+      await ipc.nextNow();
+    } catch (e) {
+      clearNextTimeout();
+      set({ loading: false, errorBanner: String(e) });
+    }
   },
   setPaused: async (p) => {
     await ipc.setPaused(p);
     set({ paused: p });
   },
   clearError: () => set({ errorBanner: null }),
+  beginLoading: () => {
+    set({ loading: true });
+    clearNextTimeout();
+    nextTimeout = setTimeout(() => {
+      nextTimeout = null;
+      useWallpaperStore.setState({ loading: false });
+    }, 30000);
+  },
 }));
 
 export function bindWallpaperEvents() {
-  onWallpaperChanged((w: Wallpaper) =>
-    useWallpaperStore.setState({ current: w }),
-  );
-  onError((m) => useWallpaperStore.setState({ errorBanner: m }));
+  onWallpaperChanged((w: Wallpaper) => {
+    clearNextTimeout();
+    useWallpaperStore.setState({ current: w, loading: false });
+  });
+  onError((m) => {
+    clearNextTimeout();
+    useWallpaperStore.setState({ errorBanner: m, loading: false });
+  });
 }

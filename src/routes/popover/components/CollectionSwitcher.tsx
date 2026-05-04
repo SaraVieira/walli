@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSettingsStore } from "../../../store/settings";
+import { useWallpaperStore } from "../../../store/wallpaper";
 import { ipc } from "../../../shared/ipc";
 import {
   Select,

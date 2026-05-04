@@ -6,6 +6,7 @@ import SourceToggles from "./components/SourceToggles";
 import ApiKeyInput from "./components/ApiKeyInput";
 import CollectionsEditor from "./components/CollectionsEditor";
 
+
 export default function SettingsPage() {
   const { settings, collections, refresh, patch } = useSettingsStore();
   useEffect(() => {
@@ -47,24 +48,6 @@ export default function SettingsPage() {
           isSet={settings.unsplash_key_set}
           onChanged={refresh}
         />
-      </section>
-
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold">Local folder</h2>
-        <div className="flex items-center gap-2 text-sm">
-          <span className="flex-1 truncate text-muted">
-            {settings.local_folder_path ?? "Not set"}
-          </span>
-          <button
-            onClick={async () => {
-              await ipc.pickLocalFolder();
-              refresh();
-            }}
-            className="rounded bg-accent px-3 py-1 text-xs text-white"
-          >
-            Choose…
-          </button>
-        </div>
       </section>
 
       <section>

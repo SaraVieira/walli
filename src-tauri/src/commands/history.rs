@@ -19,7 +19,11 @@ pub async fn list_history(
 #[tauri::command]
 pub async fn toggle_favorite(app: AppHandle, wallpaper_id: i64) -> AppResult<bool> {
     let pool = app.state::<Pool>().inner().clone();
-    queries::toggle_favorite(&pool, wallpaper_id, Utc::now().timestamp())
+    let new_state = queries::toggle_favorite(&pool, wallpaper_id, Utc::now().timestamp())?;
+    if let Some(w) = queries::get_wallpaper(&pool, wallpaper_id)? {
+        let _ = app.emit("wallpaper-changed", &w);
+    }
+    Ok(new_state)
 }
 
 #[tauri::command]

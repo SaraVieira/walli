@@ -2,10 +2,8 @@ use crate::errors::AppResult;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-pub mod apod;
 pub mod bing;
 pub mod http;
-pub mod local;
 pub mod pool;
 pub mod unsplash;
 
@@ -14,8 +12,6 @@ pub mod unsplash;
 pub enum SourceKind {
     Unsplash,
     Bing,
-    Apod,
-    Local,
 }
 
 impl SourceKind {
@@ -23,8 +19,6 @@ impl SourceKind {
         match self {
             SourceKind::Unsplash => "unsplash",
             SourceKind::Bing => "bing",
-            SourceKind::Apod => "apod",
-            SourceKind::Local => "local",
         }
     }
 }
@@ -34,11 +28,10 @@ pub struct FetchedImage {
     pub source: SourceKind,
     pub source_id: String,
     pub photographer: Option<String>,
+    pub title: Option<String>,
     pub source_url: Option<String>,
-    /// Direct URL to download the binary image (None for local).
+    /// Direct URL to download the binary image.
     pub image_url: Option<String>,
-    /// For local source, the absolute file path.
-    pub local_path: Option<String>,
     pub download_location: Option<String>, // Unsplash compliance ping URL
     pub width: Option<i64>,
     pub height: Option<i64>,
@@ -48,7 +41,6 @@ pub struct FetchedImage {
 pub struct FetchContext {
     pub tags: Vec<String>,
     pub api_keys: std::collections::HashMap<SourceKind, String>,
-    pub local_folder: Option<String>,
     #[allow(dead_code)]
     pub today: String, // YYYY-MM-DD
 }

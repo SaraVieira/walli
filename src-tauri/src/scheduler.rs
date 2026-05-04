@@ -2,8 +2,8 @@ use crate::cache::Cache;
 use crate::db::{queries, Pool};
 use crate::errors::{AppError, AppResult};
 use crate::sources::{
-    apod::Apod, bing::Bing, http::HTTP, local::Local, pool::Pool as SrcPool, unsplash::Unsplash,
-    FetchContext, FetchedImage, SourceKind, WallpaperSource,
+    bing::Bing, http::HTTP, pool::Pool as SrcPool, unsplash::Unsplash, FetchContext, FetchedImage,
+    SourceKind, WallpaperSource,
 };
 use crate::wallpaper_setter;
 use chrono::Utc;
@@ -118,6 +118,37 @@ async fn run_rotation(
 ) -> AppResult<()> {
     tracing::info!("rotation start");
     let s = queries::get_settings(pool)?;
+    let per_display = s.get("per_display_mode").map(String::as_str) == Some("true");
+
+    if per_display {
+        let ids = wallpaper_setter::per_display::screen_ids()?;
+        for (i, sid) in ids.iter().enumerate() {
+            if let Err(e) =
+                rotate_one_display(app, pool, cache, src_pool, Some((i, sid.as_str()))).await
+            {
+                tracing::warn!(?e, sid = %sid, "per-display rotation failed");
+            }
+        }
+    } else {
+        rotate_one_display(app, pool, cache, src_pool, None).await?;
+    }
+
+    queries::set_setting(
+        pool,
+        "last_rotation_at",
+        &Utc::now().timestamp().to_string(),
+    )?;
+    Ok(())
+}
+
+async fn rotate_one_display(
+    app: &AppHandle,
+    pool: &Pool,
+    cache: &Cache,
+    src_pool: &SrcPool,
+    display: Option<(usize, &str)>,
+) -> AppResult<()> {
+    let s = queries::get_settings(pool)?;
     let mut candidates = Vec::new();
     if s.get("source_unsplash_enabled").map(String::as_str) == Some("true")
         && s.get("unsplash_api_key")
@@ -132,18 +163,6 @@ async fn run_rotation(
     {
         candidates.push(SourceKind::Bing);
     }
-    if s.get("source_apod_enabled").map(String::as_str) == Some("true")
-        && s.get("last_apod_fetch_date").map(String::as_str) != Some(today.as_str())
-    {
-        candidates.push(SourceKind::Apod);
-    }
-    if s.get("source_local_enabled").map(String::as_str) == Some("true")
-        && s.get("local_folder_path")
-            .map(|p| std::path::Path::new(p).exists())
-            .unwrap_or(false)
-    {
-        candidates.push(SourceKind::Local);
-    }
 
     tracing::info!(candidates = ?candidates, "eligible sources");
 
@@ -151,9 +170,8 @@ async fn run_rotation(
         Ok(k) => k,
         Err(_) => {
             tracing::warn!("no eligible sources, falling back to favorites/history");
-            // fallback to favorite, then history
             if let Some(w) = queries::random_favorite(pool)?.or(queries::random_history(pool)?) {
-                apply_existing_wallpaper(app, pool, &w).await?;
+                apply_existing_wallpaper(app, pool, &w, display).await?;
                 return Ok(());
             }
             tracing::error!("no fallback wallpaper available");
@@ -165,7 +183,6 @@ async fn run_rotation(
     };
     tracing::info!(?kind, "picked source");
 
-    // Tags from active collection
     let active_id = s
         .get("active_collection_id")
         .and_then(|x| x.parse::<i64>().ok());
@@ -189,15 +206,12 @@ async fn run_rotation(
     let ctx = FetchContext {
         tags,
         api_keys,
-        local_folder: s.get("local_folder_path").cloned(),
         today: today.clone(),
     };
 
     let source: Box<dyn WallpaperSource> = match kind {
         SourceKind::Unsplash => Box::new(Unsplash),
         SourceKind::Bing => Box::new(Bing),
-        SourceKind::Apod => Box::new(Apod),
-        SourceKind::Local => Box::new(Local),
     };
 
     let fetched = match fetch_with_retry(source.as_ref(), &ctx).await {
@@ -213,35 +227,33 @@ async fn run_rotation(
     };
     tracing::info!(source_id = %fetched.source_id, photographer = ?fetched.photographer, "source fetched");
 
-    let (file_path, is_local) = if let Some(local) = fetched.local_path.clone() {
-        (local, true)
-    } else {
-        let url = fetched
-            .image_url
-            .clone()
-            .ok_or_else(|| AppError::Invalid("no image url".into()))?;
-        let bytes = HTTP
-            .get(&url)
-            .send()
-            .await?
-            .error_for_status()?
-            .bytes()
-            .await?;
-        let p = cache.write(&bytes, &fetched.ext)?;
-        (p.to_string_lossy().into(), false)
-    };
+    let url = fetched
+        .image_url
+        .clone()
+        .ok_or_else(|| AppError::Invalid("no image url".into()))?;
+    let bytes = HTTP
+        .get(&url)
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
+    let p = cache.write(&bytes, &fetched.ext)?;
+    let file_path = p.to_string_lossy().to_string();
 
     let w = queries::Wallpaper {
         id: 0,
         source: fetched.source.as_str().into(),
         source_id: fetched.source_id.clone(),
         photographer: fetched.photographer.clone(),
+        title: fetched.title.clone(),
         source_url: fetched.source_url.clone(),
         file_path: file_path.clone(),
-        is_local,
+        is_local: false,
         width: fetched.width,
         height: fetched.height,
         fetched_at: Utc::now().timestamp(),
+        is_favorite: false,
     };
     let wid = queries::upsert_wallpaper(pool, &w)?;
 
@@ -261,23 +273,14 @@ async fn run_rotation(
         }
     }
 
-    let per_display = s.get("per_display_mode").map(String::as_str) == Some("true");
-    tracing::info!(file_path = %file_path, per_display = per_display, "applying wallpaper");
-    apply_and_record(app, pool, wid, &file_path).await?;
+    let display_dbg = display.map(|(i, sid)| (i, sid.to_string()));
+    tracing::info!(file_path = %file_path, display = ?display_dbg, "applying wallpaper");
+    apply_and_record(app, pool, wid, &file_path, display).await?;
     tracing::info!("wallpaper applied");
 
-    // Daily-source bookkeeping
     if kind == SourceKind::Bing {
         queries::set_setting(pool, "last_bing_fetch_date", &today)?;
     }
-    if kind == SourceKind::Apod {
-        queries::set_setting(pool, "last_apod_fetch_date", &today)?;
-    }
-    queries::set_setting(
-        pool,
-        "last_rotation_at",
-        &Utc::now().timestamp().to_string(),
-    )?;
     Ok(())
 }
 
@@ -290,18 +293,17 @@ async fn apply_and_record(
     pool: &Pool,
     wallpaper_id: i64,
     file_path: &str,
+    display: Option<(usize, &str)>,
 ) -> AppResult<()> {
-    let s = queries::get_settings(pool)?;
-    let per_display = s.get("per_display_mode").map(String::as_str) == Some("true");
-    if per_display {
-        let ids = wallpaper_setter::per_display::screen_ids()?;
-        for (i, sid) in ids.iter().enumerate() {
-            wallpaper_setter::per_display::set_for_display(i, std::path::Path::new(file_path))?;
+    match display {
+        Some((index, sid)) => {
+            wallpaper_setter::per_display::set_for_display(index, std::path::Path::new(file_path))?;
             queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), Some(sid))?;
         }
-    } else {
-        wallpaper_setter::set_all(std::path::Path::new(file_path))?;
-        queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), None)?;
+        None => {
+            wallpaper_setter::set_all(std::path::Path::new(file_path))?;
+            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), None)?;
+        }
     }
     let w = queries::get_wallpaper(pool, wallpaper_id)?;
     if let Some(w) = w {
@@ -314,8 +316,9 @@ async fn apply_existing_wallpaper(
     app: &AppHandle,
     pool: &Pool,
     w: &queries::Wallpaper,
+    display: Option<(usize, &str)>,
 ) -> AppResult<()> {
-    apply_and_record(app, pool, w.id, &w.file_path).await
+    apply_and_record(app, pool, w.id, &w.file_path, display).await
 }
 
 async fn fetch_with_retry(

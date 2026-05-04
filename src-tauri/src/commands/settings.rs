@@ -5,7 +5,6 @@ use crate::sources::SourceKind;
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
-use tauri_plugin_dialog::DialogExt;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SettingsDto {
@@ -15,9 +14,6 @@ pub struct SettingsDto {
     pub active_collection_id: Option<i64>,
     pub source_unsplash_enabled: bool,
     pub source_bing_enabled: bool,
-    pub source_apod_enabled: bool,
-    pub source_local_enabled: bool,
-    pub local_folder_path: Option<String>,
     pub unsplash_key_set: bool,
     pub login_at_startup: bool,
 }
@@ -41,9 +37,6 @@ pub async fn get_settings(app: AppHandle) -> AppResult<SettingsDto> {
         active_collection_id: s.get("active_collection_id").and_then(|x| x.parse().ok()),
         source_unsplash_enabled: b(&s, "source_unsplash_enabled"),
         source_bing_enabled: b(&s, "source_bing_enabled"),
-        source_apod_enabled: b(&s, "source_apod_enabled"),
-        source_local_enabled: b(&s, "source_local_enabled"),
-        local_folder_path: s.get("local_folder_path").cloned(),
         unsplash_key_set: s
             .get("unsplash_api_key")
             .map(|v| !v.is_empty())
@@ -96,19 +89,6 @@ pub async fn clear_api_key(app: AppHandle, source: SourceKind) -> AppResult<()> 
     let pool = app.state::<Pool>().inner().clone();
     queries::set_setting(&pool, &format!("{}_api_key", source.as_str()), "")?;
     Ok(())
-}
-
-#[tauri::command]
-pub async fn pick_local_folder(app: AppHandle) -> AppResult<Option<String>> {
-    let path = app.dialog().file().blocking_pick_folder();
-    let result = path
-        .and_then(|p| p.into_path().ok())
-        .map(|p| p.to_string_lossy().to_string());
-    if let Some(ref p) = result {
-        let pool = app.state::<Pool>().inner().clone();
-        queries::set_setting(&pool, "local_folder_path", p)?;
-    }
-    Ok(result)
 }
 
 #[tauri::command]

@@ -1,5 +1,6 @@
 use crate::db::{queries, Pool};
 use crate::errors::AppResult;
+use crate::scheduler::{SchedulerHandle, SchedulerMsg};
 use chrono::Utc;
 use tauri::{AppHandle, Manager};
 
@@ -39,5 +40,9 @@ pub async fn delete_collection(app: AppHandle, id: i64) -> AppResult<()> {
 #[tauri::command]
 pub async fn set_active_collection(app: AppHandle, id: i64) -> AppResult<()> {
     let pool = app.state::<Pool>().inner().clone();
-    queries::set_setting(&pool, "active_collection_id", &id.to_string())
+    queries::set_setting(&pool, "active_collection_id", &id.to_string())?;
+    if let Some(h) = app.try_state::<SchedulerHandle>() {
+        let _ = h.tx.send(SchedulerMsg::NextNow).await;
+    }
+    Ok(())
 }

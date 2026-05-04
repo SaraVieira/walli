@@ -12,28 +12,24 @@ export default function PopoverPage() {
   }, [refresh]);
 
   return (
-    <div className="flex h-full flex-col gap-3 p-3">
+    <div className="flex h-full flex-col gap-3">
       <CurrentCard />
-      <CollectionSwitcher />
-      <div className="flex text-xs ttext-muted-foreground justify-between">
-        <button
-          onClick={() => ipc.openSettings()}
-          className="hover:text-foreground cursor-pointer"
-        >
-          Settings
-        </button>
-        <button
-          onClick={() => ipc.openHistory()}
-          className="hover:text-foreground cursor-pointer"
-        >
-          History
-        </button>
-        <button
-          onClick={() => ipc.quitApp()}
-          className=" hover:text-foreground cursor-pointer"
-        >
-          Quit
-        </button>
+      <div className="px-4 flex flex-col ">
+        <CollectionSwitcher />
+        <div className="flex text-xs ttext-muted-foreground justify-between mt-4">
+          <button
+            onClick={() => ipc.openSettings()}
+            className="hover:text-foreground cursor-pointer"
+          >
+            Settings
+          </button>
+          <button
+            onClick={() => ipc.quitApp()}
+            className=" hover:text-foreground cursor-pointer"
+          >
+            Quit
+          </button>
+        </div>
       </div>
     </div>
   );

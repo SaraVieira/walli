@@ -27,6 +27,8 @@ struct Photo {
     urls: PhotoUrls,
     links: PhotoLinks,
     user: PhotoUser,
+    description: Option<String>,
+    alt_description: Option<String>,
 }
 
 #[async_trait]
@@ -54,13 +56,14 @@ impl WallpaperSource for Unsplash {
             .error_for_status()?
             .json()
             .await?;
+        let title = photo.description.or(photo.alt_description);
         Ok(FetchedImage {
             source: SourceKind::Unsplash,
             source_id: photo.id,
             photographer: photo.user.name,
+            title,
             source_url: Some(photo.links.html),
             image_url: Some(photo.urls.full),
-            local_path: None,
             download_location: Some(photo.links.download_location),
             width: Some(photo.width),
             height: Some(photo.height),
@@ -86,7 +89,9 @@ mod tests {
             "height": 1080,
             "urls": {"full": "https://images.example/full.jpg"},
             "links": {"download_location": "https://api.example/dl", "html": "https://unsplash.com/p/abc"},
-            "user": {"name": "Alice"}
+            "user": {"name": "Alice"},
+            "description": null,
+            "alt_description": "a photo"
         });
         let _server = MockServer::start().await;
         let photo: Photo = serde_json::from_value(body).unwrap();

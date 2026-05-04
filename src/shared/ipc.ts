@@ -3,7 +3,6 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   AppState,
   Collection,
-  HistoryEntry,
   Settings,
   SourceKind,
   Wallpaper,
@@ -14,11 +13,7 @@ export const ipc = {
   nextNow: () => invoke<void>("next_now"),
   setPaused: (paused: boolean) => invoke<void>("set_paused", { paused }),
   toggleFavorite: (wallpaperId: number) =>
-    invoke<void>("toggle_favorite", { wallpaperId }),
-  setWallpaperFromHistory: (wallpaperId: number) =>
-    invoke<void>("set_wallpaper_from_history", { wallpaperId }),
-  listHistory: (limit: number, offset: number, favoritesOnly: boolean) =>
-    invoke<HistoryEntry[]>("list_history", { limit, offset, favoritesOnly }),
+    invoke<boolean>("toggle_favorite", { wallpaperId }),
   listCollections: () => invoke<Collection[]>("list_collections"),
   createCollection: (name: string, tags: string[]) =>
     invoke<Collection>("create_collection", { name, tags }),
@@ -34,7 +29,6 @@ export const ipc = {
     invoke<void>("set_api_key", { source, key }),
   clearApiKey: (source: SourceKind) =>
     invoke<void>("clear_api_key", { source }),
-  pickLocalFolder: () => invoke<string | null>("pick_local_folder"),
   setLoginAtStartup: (enabled: boolean) =>
     invoke<void>("set_login_at_startup", { enabled }),
   openSettings: () => invoke<void>("open_settings_window"),

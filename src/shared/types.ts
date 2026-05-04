@@ -1,23 +1,17 @@
-export type SourceKind = "unsplash" | "bing" | "apod" | "local";
+export type SourceKind = "unsplash" | "bing";
 
 export interface Wallpaper {
   id: number;
   source: SourceKind;
   source_id: string;
   photographer: string | null;
+  title: string | null;
   source_url: string | null;
   file_path: string;
   is_local: boolean;
   width: number | null;
   height: number | null;
   fetched_at: number;
-}
-
-export interface HistoryEntry {
-  history_id: number;
-  wallpaper: Wallpaper;
-  set_at: number;
-  display_id: string | null;
   is_favorite: boolean;
 }
 
@@ -34,9 +28,6 @@ export interface Settings {
   active_collection_id: number | null;
   source_unsplash_enabled: boolean;
   source_bing_enabled: boolean;
-  source_apod_enabled: boolean;
-  source_local_enabled: boolean;
-  local_folder_path: string | null;
   unsplash_key_set: boolean;
   login_at_startup: boolean;
 }
