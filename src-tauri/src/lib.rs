@@ -51,6 +51,7 @@ pub fn run() {
             commands::history::list_history,
             commands::history::toggle_favorite,
             commands::history::set_wallpaper_from_history,
+            commands::history::open_history_window,
             commands::settings::get_settings,
             commands::settings::update_settings,
             commands::settings::set_api_key,
@@ -58,6 +59,7 @@ pub fn run() {
             commands::settings::pick_local_folder,
             commands::settings::set_login_at_startup,
             commands::settings::open_settings_window,
+
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

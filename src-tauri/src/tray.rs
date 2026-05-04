@@ -111,16 +111,21 @@ pub fn install(app: &App) -> tauri::Result<()> {
             }
         })
         .build(app)?;
-    if let Some(popover) = app.get_webview_window("popover") {
-        let popover_clone = popover.clone();
-        popover.on_window_event(move |e| {
-            if let tauri::WindowEvent::Focused(false) = e {
-                let elapsed = now_ms() - LAST_SHOWN_MS.load(Ordering::Relaxed);
-                if elapsed > FOCUS_GRACE_MS {
-                    let _ = popover_clone.hide();
+    // Auto-hide on focus loss — disabled while iterating on UI so the popover
+    // stays open while the dev console / editor takes focus. Re-enable for
+    // production behavior.
+    if !cfg!(debug_assertions) {
+        if let Some(popover) = app.get_webview_window("popover") {
+            let popover_clone = popover.clone();
+            popover.on_window_event(move |e| {
+                if let tauri::WindowEvent::Focused(false) = e {
+                    let elapsed = now_ms() - LAST_SHOWN_MS.load(Ordering::Relaxed);
+                    if elapsed > FOCUS_GRACE_MS {
+                        let _ = popover_clone.hide();
+                    }
                 }
-            }
-        });
+            });
+        }
     }
     Ok(())
 }

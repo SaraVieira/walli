@@ -6,6 +6,7 @@ import PopoverPage from "./routes/popover/Page";
 import SettingsPage from "./routes/settings/Page";
 import { bindWallpaperEvents } from "./store/wallpaper";
 import { bindSettingsEvents } from "./store/settings";
+import HistoryList from "./routes/popover/components/HistoryList";
 
 bindWallpaperEvents();
 bindSettingsEvents();
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/" element={<PopoverPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/history" element={<HistoryList />} />
       </Routes>
     </HashRouter>
   </React.StrictMode>,

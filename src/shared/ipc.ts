@@ -38,6 +38,7 @@ export const ipc = {
   setLoginAtStartup: (enabled: boolean) =>
     invoke<void>("set_login_at_startup", { enabled }),
   openSettings: () => invoke<void>("open_settings_window"),
+  openHistory: () => invoke<void>("open_history_window"),
   quitApp: () => invoke<void>("quit_app"),
 };
 

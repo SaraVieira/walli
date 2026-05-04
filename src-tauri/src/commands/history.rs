@@ -36,3 +36,11 @@ pub async fn set_wallpaper_from_history(app: AppHandle, wallpaper_id: i64) -> Ap
     }
     Ok(())
 }
+#[tauri::command]
+pub async fn open_history_window(app: AppHandle) -> AppResult<()> {
+    if let Some(w) = app.get_webview_window("history") {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+    Ok(())
+}
