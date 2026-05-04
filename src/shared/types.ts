@@ -1,4 +1,4 @@
-export type SourceKind = "unsplash" | "wallhaven" | "bing" | "apod" | "local";
+export type SourceKind = "unsplash" | "bing" | "apod" | "local";
 
 export interface Wallpaper {
   id: number;
@@ -33,13 +33,11 @@ export interface Settings {
   paused: boolean;
   active_collection_id: number | null;
   source_unsplash_enabled: boolean;
-  source_wallhaven_enabled: boolean;
   source_bing_enabled: boolean;
   source_apod_enabled: boolean;
   source_local_enabled: boolean;
   local_folder_path: string | null;
   unsplash_key_set: boolean;
-  wallhaven_key_set: boolean;
   login_at_startup: boolean;
 }
 

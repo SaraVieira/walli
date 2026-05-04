@@ -1,17 +1,24 @@
+use super::{http::HTTP, FetchContext, FetchedImage, SourceKind, WallpaperSource};
+use crate::errors::{AppError, AppResult};
 use async_trait::async_trait;
 use rand::seq::SliceRandom;
 use serde::Deserialize;
-use crate::errors::{AppError, AppResult};
-use super::{http::HTTP, FetchContext, FetchedImage, SourceKind, WallpaperSource};
 
 pub struct Unsplash;
 
 #[derive(Deserialize)]
-struct PhotoLinks { download_location: String, html: String }
+struct PhotoLinks {
+    download_location: String,
+    html: String,
+}
 #[derive(Deserialize)]
-struct PhotoUser { name: Option<String> }
+struct PhotoUser {
+    name: Option<String>,
+}
 #[derive(Deserialize)]
-struct PhotoUrls { full: String }
+struct PhotoUrls {
+    full: String,
+}
 #[derive(Deserialize)]
 struct Photo {
     id: String,
@@ -24,20 +31,29 @@ struct Photo {
 
 #[async_trait]
 impl WallpaperSource for Unsplash {
-    fn kind(&self) -> SourceKind { SourceKind::Unsplash }
+    fn kind(&self) -> SourceKind {
+        SourceKind::Unsplash
+    }
 
     async fn fetch(&self, ctx: &FetchContext) -> AppResult<FetchedImage> {
-        let key = ctx.api_keys.get(&SourceKind::Unsplash)
+        let key = ctx
+            .api_keys
+            .get(&SourceKind::Unsplash)
             .ok_or_else(|| AppError::Invalid("Unsplash API key missing".into()))?;
-        let tag = ctx.tags.choose(&mut rand::thread_rng())
+        let tag = ctx
+            .tags
+            .choose(&mut rand::thread_rng())
             .ok_or_else(|| AppError::Invalid("Active collection has no tags".into()))?;
+        tracing::debug!(tag = %tag, "unsplash fetching");
         let photo: Photo = HTTP
             .get("https://api.unsplash.com/photos/random")
             .header("Authorization", format!("Client-ID {key}"))
             .query(&[("query", tag.as_str()), ("orientation", "landscape")])
-            .send().await?
+            .send()
+            .await?
             .error_for_status()?
-            .json().await?;
+            .json()
+            .await?;
         Ok(FetchedImage {
             source: SourceKind::Unsplash,
             source_id: photo.id,
@@ -56,8 +72,7 @@ impl WallpaperSource for Unsplash {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use wiremock::{matchers::*, Mock, MockServer, ResponseTemplate};
+    use wiremock::MockServer;
 
     #[tokio::test]
     async fn parses_random_photo_response() {

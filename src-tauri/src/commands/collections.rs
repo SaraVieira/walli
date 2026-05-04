@@ -1,7 +1,43 @@
+use crate::db::{queries, Pool};
 use crate::errors::AppResult;
+use chrono::Utc;
+use tauri::{AppHandle, Manager};
 
-#[tauri::command] pub async fn list_collections() -> AppResult<serde_json::Value> { Ok(serde_json::json!([])) }
-#[tauri::command] pub async fn create_collection(_name: String, _tags: Vec<String>) -> AppResult<serde_json::Value> { Ok(serde_json::json!({})) }
-#[tauri::command] pub async fn update_collection(_id: i64, _name: String, _tags: Vec<String>) -> AppResult<serde_json::Value> { Ok(serde_json::json!({})) }
-#[tauri::command] pub async fn delete_collection(_id: i64) -> AppResult<()> { Ok(()) }
-#[tauri::command] pub async fn set_active_collection(_id: i64) -> AppResult<()> { Ok(()) }
+#[tauri::command]
+pub async fn list_collections(app: AppHandle) -> AppResult<Vec<queries::Collection>> {
+    let pool = app.state::<Pool>().inner().clone();
+    queries::list_collections(&pool)
+}
+
+#[tauri::command]
+pub async fn create_collection(
+    app: AppHandle,
+    name: String,
+    tags: Vec<String>,
+) -> AppResult<queries::Collection> {
+    let pool = app.state::<Pool>().inner().clone();
+    queries::create_collection(&pool, &name, &tags, Utc::now().timestamp())
+}
+
+#[tauri::command]
+pub async fn update_collection(
+    app: AppHandle,
+    id: i64,
+    name: String,
+    tags: Vec<String>,
+) -> AppResult<queries::Collection> {
+    let pool = app.state::<Pool>().inner().clone();
+    queries::update_collection(&pool, id, &name, &tags)
+}
+
+#[tauri::command]
+pub async fn delete_collection(app: AppHandle, id: i64) -> AppResult<()> {
+    let pool = app.state::<Pool>().inner().clone();
+    queries::delete_collection(&pool, id)
+}
+
+#[tauri::command]
+pub async fn set_active_collection(app: AppHandle, id: i64) -> AppResult<()> {
+    let pool = app.state::<Pool>().inner().clone();
+    queries::set_setting(&pool, "active_collection_id", &id.to_string())
+}

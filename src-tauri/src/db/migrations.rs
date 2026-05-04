@@ -52,12 +52,20 @@ pub const MIGRATIONS: &[&str] = &[
         ('source_apod_enabled', 'true'),
         ('source_local_enabled', 'false');
     "#,
+    // 0002 — drop wallhaven, seed unsplash_api_key (idempotent on existing DBs)
+    r#"
+    DELETE FROM settings WHERE key = 'source_wallhaven_enabled';
+    INSERT OR IGNORE INTO settings (key, value) VALUES ('unsplash_api_key', '');
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {
     conn.execute_batch("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)")?;
-    let current: i64 = conn
-        .query_row("SELECT COALESCE(MAX(version), 0) FROM schema_version", [], |r| r.get(0))?;
+    let current: i64 = conn.query_row(
+        "SELECT COALESCE(MAX(version), 0) FROM schema_version",
+        [],
+        |r| r.get(0),
+    )?;
     for (i, sql) in MIGRATIONS.iter().enumerate() {
         let v = (i as i64) + 1;
         if v > current {

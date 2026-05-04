@@ -1,9 +1,11 @@
-use std::path::{Path, PathBuf};
-use sha2::{Digest, Sha256};
 use crate::errors::AppResult;
+use sha2::{Digest, Sha256};
+use std::path::{Path, PathBuf};
 
 #[derive(Clone)]
-pub struct Cache { pub dir: PathBuf }
+pub struct Cache {
+    pub dir: PathBuf,
+}
 
 impl Cache {
     pub fn new(dir: PathBuf) -> std::io::Result<Self> {
@@ -15,17 +17,26 @@ impl Cache {
         let mut hasher = Sha256::new();
         hasher.update(bytes);
         let hex = hex::encode(hasher.finalize());
-        let safe_ext = if ext.is_empty() { "jpg".into() } else { ext.trim_start_matches('.').to_lowercase() };
+        let safe_ext = if ext.is_empty() {
+            "jpg".into()
+        } else {
+            ext.trim_start_matches('.').to_lowercase()
+        };
         self.dir.join(format!("{}.{}", hex, safe_ext))
     }
 
     pub fn write(&self, bytes: &[u8], ext: &str) -> AppResult<PathBuf> {
         let p = self.path_for(bytes, ext);
-        if !p.exists() { std::fs::write(&p, bytes)?; }
+        if !p.exists() {
+            std::fs::write(&p, bytes)?;
+        }
         Ok(p)
     }
 
-    pub fn exists(&self, p: &Path) -> bool { p.exists() }
+    #[allow(dead_code)]
+    pub fn exists(&self, p: &Path) -> bool {
+        p.exists()
+    }
 }
 
 #[cfg(test)]

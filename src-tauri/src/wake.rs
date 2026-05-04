@@ -20,5 +20,7 @@ pub fn install(app: AppHandle) {
         });
     }
     #[cfg(not(target_os = "macos"))]
-    { let _ = app; }
+    {
+        let _ = app;
+    }
 }

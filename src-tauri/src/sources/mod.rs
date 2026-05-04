@@ -1,24 +1,27 @@
+use crate::errors::AppResult;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use crate::errors::AppResult;
 
-pub mod http;
 pub mod apod;
 pub mod bing;
+pub mod http;
 pub mod local;
 pub mod pool;
 pub mod unsplash;
-pub mod wallhaven;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum SourceKind { Unsplash, Wallhaven, Bing, Apod, Local }
+pub enum SourceKind {
+    Unsplash,
+    Bing,
+    Apod,
+    Local,
+}
 
 impl SourceKind {
     pub fn as_str(&self) -> &'static str {
         match self {
             SourceKind::Unsplash => "unsplash",
-            SourceKind::Wallhaven => "wallhaven",
             SourceKind::Bing => "bing",
             SourceKind::Apod => "apod",
             SourceKind::Local => "local",
@@ -46,11 +49,13 @@ pub struct FetchContext {
     pub tags: Vec<String>,
     pub api_keys: std::collections::HashMap<SourceKind, String>,
     pub local_folder: Option<String>,
+    #[allow(dead_code)]
     pub today: String, // YYYY-MM-DD
 }
 
 #[async_trait]
 pub trait WallpaperSource: Send + Sync {
+    #[allow(dead_code)]
     fn kind(&self) -> SourceKind;
     async fn fetch(&self, ctx: &FetchContext) -> AppResult<FetchedImage>;
 }

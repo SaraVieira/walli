@@ -18,10 +18,16 @@ async fn migrations_run_idempotently() {
 async fn upsert_wallpaper_and_history() {
     let (pool, _dir) = fresh_pool().await;
     let w = queries::Wallpaper {
-        id: 0, source: "unsplash".into(), source_id: "abc".into(),
-        photographer: Some("alice".into()), source_url: None,
-        file_path: "/tmp/a.jpg".into(), is_local: false,
-        width: Some(1920), height: Some(1080), fetched_at: 1,
+        id: 0,
+        source: "unsplash".into(),
+        source_id: "abc".into(),
+        photographer: Some("alice".into()),
+        source_url: None,
+        file_path: "/tmp/a.jpg".into(),
+        is_local: false,
+        width: Some(1920),
+        height: Some(1080),
+        fetched_at: 1,
     };
     let id = queries::upsert_wallpaper(&pool, &w).unwrap();
     assert!(id > 0);
@@ -37,10 +43,16 @@ async fn upsert_wallpaper_and_history() {
 async fn favorite_toggles() {
     let (pool, _dir) = fresh_pool().await;
     let w = queries::Wallpaper {
-        id: 0, source: "bing".into(), source_id: "x".into(),
-        photographer: None, source_url: None,
-        file_path: "/tmp/b.jpg".into(), is_local: false,
-        width: None, height: None, fetched_at: 0,
+        id: 0,
+        source: "bing".into(),
+        source_id: "x".into(),
+        photographer: None,
+        source_url: None,
+        file_path: "/tmp/b.jpg".into(),
+        is_local: false,
+        width: None,
+        height: None,
+        fetched_at: 0,
     };
     let id = queries::upsert_wallpaper(&pool, &w).unwrap();
     assert!(queries::toggle_favorite(&pool, id, 1).unwrap());
@@ -50,7 +62,8 @@ async fn favorite_toggles() {
 #[tokio::test]
 async fn collection_crud() {
     let (pool, _dir) = fresh_pool().await;
-    let c = queries::create_collection(&pool, "Nature", &["mountains".into(), "forest".into()], 0).unwrap();
+    let c = queries::create_collection(&pool, "Nature", &["mountains".into(), "forest".into()], 0)
+        .unwrap();
     assert_eq!(c.tags.len(), 2);
     let updated = queries::update_collection(&pool, c.id, "Nature 2", &["ocean".into()]).unwrap();
     assert_eq!(updated.tags, vec!["ocean"]);

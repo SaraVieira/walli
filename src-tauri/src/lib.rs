@@ -5,7 +5,6 @@ mod commands;
 mod db;
 mod errors;
 mod scheduler;
-mod secrets;
 mod sources;
 mod tray;
 mod wake;
@@ -13,7 +12,9 @@ mod wallpaper_setter;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tracing_subscriber::fmt().with_env_filter("info,walli=debug").init();
+    tracing_subscriber::fmt()
+        .with_env_filter("info,walli=debug")
+        .init();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -27,6 +28,8 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(ActivationPolicy::Accessory);
 
+            tray::install(app)?;
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(e) = bootstrap(handle).await {
@@ -39,6 +42,7 @@ pub fn run() {
             commands::control::next_now,
             commands::control::set_paused,
             commands::control::get_state,
+            commands::control::quit_app,
             commands::collections::list_collections,
             commands::collections::create_collection,
             commands::collections::update_collection,
@@ -53,6 +57,7 @@ pub fn run() {
             commands::settings::clear_api_key,
             commands::settings::pick_local_folder,
             commands::settings::set_login_at_startup,
+            commands::settings::open_settings_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -67,7 +72,6 @@ async fn bootstrap(app: tauri::AppHandle) -> anyhow::Result<()> {
     let cache = cache::Cache::new(app_dir.join("wallpapers"))?;
     app.manage(cache);
 
-    tray::install(&app)?;
     let scheduler_handle = scheduler::start(app.clone()).await?;
     app.manage(scheduler_handle);
     wake::install(app.clone());

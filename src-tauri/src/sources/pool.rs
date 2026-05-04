@@ -1,9 +1,9 @@
+use super::SourceKind;
+use crate::errors::{AppError, AppResult};
+use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use rand::seq::SliceRandom;
-use crate::errors::{AppError, AppResult};
-use super::SourceKind;
 
 #[derive(Default)]
 pub struct CooldownState {
@@ -16,7 +16,9 @@ pub struct Pool {
 }
 
 impl Pool {
-    pub fn new() -> Self { Self::default() }
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn cooldown(&self, kind: SourceKind, dur: Duration) {
         let mut s = self.state.lock().unwrap();
@@ -26,14 +28,17 @@ impl Pool {
     pub fn eligible(&self, candidates: &[SourceKind]) -> Vec<SourceKind> {
         let s = self.state.lock().unwrap();
         let now = Instant::now();
-        candidates.iter().copied().filter(|k| {
-            s.until.get(k).map(|t| *t <= now).unwrap_or(true)
-        }).collect()
+        candidates
+            .iter()
+            .copied()
+            .filter(|k| s.until.get(k).map(|t| *t <= now).unwrap_or(true))
+            .collect()
     }
 
     pub fn pick(&self, candidates: &[SourceKind]) -> AppResult<SourceKind> {
         let elig = self.eligible(candidates);
-        elig.choose(&mut rand::thread_rng()).copied()
+        elig.choose(&mut rand::thread_rng())
+            .copied()
             .ok_or_else(|| AppError::Invalid("No eligible sources".into()))
     }
 }
