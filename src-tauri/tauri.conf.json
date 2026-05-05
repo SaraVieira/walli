@@ -18,7 +18,7 @@
         "title": "Walli",
         "url": "index.html#/",
         "width": 360,
-        "height": 320,
+        "height": 300,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
@@ -31,7 +31,7 @@
         "title": "Walli — Settings",
         "url": "index.html#/settings",
         "width": 720,
-        "height": 560,
+        "height": 620,
         "visible": false,
         "resizable": true
       }

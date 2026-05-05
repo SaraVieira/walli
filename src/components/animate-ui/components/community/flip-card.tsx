@@ -15,7 +15,7 @@ interface FlipCardProps {
 }
 
 export function FlipCard({ data, children }: FlipCardProps) {
-  const [isFlipped, setIsFlipped] = React.useState(false);
+  const [isFlipped, setIsFlipped] = React.useState(true);
 
   const isTouchDevice =
     typeof window !== "undefined" && "ontouchstart" in window;
@@ -60,7 +60,7 @@ export function FlipCard({ data, children }: FlipCardProps) {
 
       {/* BACK: Bio + Stats + Socials */}
       <motion.div
-        className="absolute inset-0 backface-hidden px-4 py-6 flex flex-col justify-between items-center gap-y-4  from-muted via-background to-muted "
+        className="absolute inset-0 backface-hidden p-4 flex flex-col justify-between items-center gap-y-4  from-muted via-background to-muted "
         initial={{ rotateY: 180 }}
         animate={isFlipped ? "front" : "back"}
         variants={cardVariants}

@@ -16,20 +16,29 @@ export default function CurrentCard() {
     bio: `${current.photographer ?? "Unknown"} · ${current.source}`,
   };
   return (
-    <div className="space-y-2 -mt-2">
+    <div className="-mt-2">
       <FlipCard data={data}>
         <div className="flex flex-col items-start justify-between h-full w-full">
-          <div>
-            {current.title && <div className="text-xs">{current.title}</div>}
-            <div className="text-xs text-muted-foreground">
+          <div className="text-accent bg-accent/10 p-4 text-sm flex flex-col gap-2">
+            {current.title && <div>{current.title}</div>}
+            <div>
               {current.photographer ?? "Unknown"} · {current.source}
             </div>
           </div>
           <div className="flex justify-between items-center w-full">
-            <Button onClick={next} disabled={loading} variant={"outline"}>
+            <Button
+              onClick={next}
+              disabled={loading}
+              variant={"outline"}
+              className="bg-accent/20 text-white border-none cursor-pointer"
+            >
               {loading ? <Loader /> : <ChevronRight />}
             </Button>
-            <Button variant={"outline"} onClick={() => setPaused(!paused)}>
+            <Button
+              variant={"outline"}
+              className="bg-accent/20 text-white border-none cursor-pointer"
+              onClick={() => setPaused(!paused)}
+            >
               {paused ? <Play /> : <Pause />}
             </Button>
           </div>
