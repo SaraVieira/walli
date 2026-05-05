@@ -6,7 +6,6 @@ import SourceToggles from "./components/SourceToggles";
 import ApiKeyInput from "./components/ApiKeyInput";
 import CollectionsEditor from "./components/CollectionsEditor";
 
-
 export default function SettingsPage() {
   const { settings, collections, refresh, patch } = useSettingsStore();
   useEffect(() => {
@@ -21,18 +20,6 @@ export default function SettingsPage() {
           value={settings.interval_seconds}
           onChange={(s) => patch({ interval_seconds: s })}
         />
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-sm font-semibold">Display</h2>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={settings.per_display_mode}
-            onChange={(e) => patch({ per_display_mode: e.target.checked })}
-          />
-          Different wallpaper per display
-        </label>
       </section>
 
       <section>

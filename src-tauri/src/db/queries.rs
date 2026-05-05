@@ -16,7 +16,6 @@ pub struct Wallpaper {
     pub width: Option<i64>,
     pub height: Option<i64>,
     pub fetched_at: i64,
-    pub is_favorite: bool,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -25,7 +24,6 @@ pub struct HistoryEntry {
     pub wallpaper: Wallpaper,
     pub set_at: i64,
     pub display_id: Option<String>,
-    pub is_favorite: bool,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -74,31 +72,15 @@ pub fn record_history(
     Ok(conn.last_insert_rowid())
 }
 
-pub fn list_history(
-    pool: &Pool,
-    limit: u32,
-    offset: u32,
-    favorites_only: bool,
-) -> AppResult<Vec<HistoryEntry>> {
+pub fn list_history(pool: &Pool, limit: u32, offset: u32) -> AppResult<Vec<HistoryEntry>> {
     let conn = pool.lock().unwrap();
-    let sql = if favorites_only {
-        "SELECT h.id, h.set_at, h.display_id, w.id, w.source, w.source_id, w.photographer, w.title, w.source_url,
-                w.file_path, w.is_local, w.width, w.height, w.fetched_at,
-                EXISTS(SELECT 1 FROM favorites f WHERE f.wallpaper_id = w.id)
+    let sql = "SELECT h.id, h.set_at, h.display_id, w.id, w.source, w.source_id, w.photographer, w.title, w.source_url,
+                w.file_path, w.is_local, w.width, w.height, w.fetched_at
          FROM history h JOIN wallpapers w ON w.id = h.wallpaper_id
-         WHERE EXISTS(SELECT 1 FROM favorites f WHERE f.wallpaper_id = w.id)
-         ORDER BY h.set_at DESC LIMIT ? OFFSET ?"
-    } else {
-        "SELECT h.id, h.set_at, h.display_id, w.id, w.source, w.source_id, w.photographer, w.title, w.source_url,
-                w.file_path, w.is_local, w.width, w.height, w.fetched_at,
-                EXISTS(SELECT 1 FROM favorites f WHERE f.wallpaper_id = w.id)
-         FROM history h JOIN wallpapers w ON w.id = h.wallpaper_id
-         ORDER BY h.set_at DESC LIMIT ? OFFSET ?"
-    };
+         ORDER BY h.set_at DESC LIMIT ? OFFSET ?";
     let mut stmt = conn.prepare(sql)?;
     let rows = stmt
         .query_map(params![limit, offset], |r| {
-            let is_favorite = r.get::<_, i64>(14)? != 0;
             Ok(HistoryEntry {
                 history_id: r.get(0)?,
                 set_at: r.get(1)?,
@@ -115,9 +97,7 @@ pub fn list_history(
                     width: r.get(11)?,
                     height: r.get(12)?,
                     fetched_at: r.get(13)?,
-                    is_favorite,
                 },
-                is_favorite,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -128,8 +108,7 @@ pub fn get_wallpaper(pool: &Pool, id: i64) -> AppResult<Option<Wallpaper>> {
     let conn = pool.lock().unwrap();
     Ok(conn.query_row(
         "SELECT w.id, w.source, w.source_id, w.photographer, w.title, w.source_url, w.file_path, w.is_local,
-                w.width, w.height, w.fetched_at,
-                EXISTS(SELECT 1 FROM favorites f WHERE f.wallpaper_id = w.id)
+                w.width, w.height, w.fetched_at
          FROM wallpapers w WHERE w.id = ?",
         params![id],
         |r| Ok(Wallpaper {
@@ -137,46 +116,6 @@ pub fn get_wallpaper(pool: &Pool, id: i64) -> AppResult<Option<Wallpaper>> {
             photographer: r.get(3)?, title: r.get(4)?, source_url: r.get(5)?, file_path: r.get(6)?,
             is_local: r.get::<_, i64>(7)? != 0,
             width: r.get(8)?, height: r.get(9)?, fetched_at: r.get(10)?,
-            is_favorite: r.get::<_, i64>(11)? != 0,
-        })).optional()?)
-}
-
-pub fn toggle_favorite(pool: &Pool, wallpaper_id: i64, now: i64) -> AppResult<bool> {
-    let conn = pool.lock().unwrap();
-    let exists: bool = conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM favorites WHERE wallpaper_id = ?)",
-        params![wallpaper_id],
-        |r| r.get::<_, i64>(0).map(|v| v != 0),
-    )?;
-    if exists {
-        conn.execute(
-            "DELETE FROM favorites WHERE wallpaper_id = ?",
-            params![wallpaper_id],
-        )?;
-        Ok(false)
-    } else {
-        conn.execute(
-            "INSERT INTO favorites (wallpaper_id, favorited_at) VALUES (?, ?)",
-            params![wallpaper_id, now],
-        )?;
-        Ok(true)
-    }
-}
-
-pub fn random_favorite(pool: &Pool) -> AppResult<Option<Wallpaper>> {
-    let conn = pool.lock().unwrap();
-    Ok(conn.query_row(
-        "SELECT w.id, w.source, w.source_id, w.photographer, w.title, w.source_url, w.file_path, w.is_local,
-                w.width, w.height, w.fetched_at, 1
-         FROM favorites f JOIN wallpapers w ON w.id = f.wallpaper_id
-         ORDER BY RANDOM() LIMIT 1",
-        [],
-        |r| Ok(Wallpaper {
-            id: r.get(0)?, source: r.get(1)?, source_id: r.get(2)?,
-            photographer: r.get(3)?, title: r.get(4)?, source_url: r.get(5)?, file_path: r.get(6)?,
-            is_local: r.get::<_, i64>(7)? != 0,
-            width: r.get(8)?, height: r.get(9)?, fetched_at: r.get(10)?,
-            is_favorite: r.get::<_, i64>(11)? != 0,
         })).optional()?)
 }
 
@@ -184,8 +123,7 @@ pub fn random_history(pool: &Pool) -> AppResult<Option<Wallpaper>> {
     let conn = pool.lock().unwrap();
     Ok(conn.query_row(
         "SELECT w.id, w.source, w.source_id, w.photographer, w.title, w.source_url, w.file_path, w.is_local,
-                w.width, w.height, w.fetched_at,
-                EXISTS(SELECT 1 FROM favorites f WHERE f.wallpaper_id = w.id)
+                w.width, w.height, w.fetched_at
          FROM wallpapers w
          WHERE w.file_path IS NOT NULL
          ORDER BY RANDOM() LIMIT 1",
@@ -195,7 +133,6 @@ pub fn random_history(pool: &Pool) -> AppResult<Option<Wallpaper>> {
             photographer: r.get(3)?, title: r.get(4)?, source_url: r.get(5)?, file_path: r.get(6)?,
             is_local: r.get::<_, i64>(7)? != 0,
             width: r.get(8)?, height: r.get(9)?, fetched_at: r.get(10)?,
-            is_favorite: r.get::<_, i64>(11)? != 0,
         })).optional()?)
 }
 

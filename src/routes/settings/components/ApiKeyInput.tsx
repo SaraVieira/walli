@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ipc } from "../../../shared/ipc";
 import type { SourceKind } from "../../../shared/types";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 export default function ApiKeyInput(props: {
   source: SourceKind;
@@ -12,14 +14,13 @@ export default function ApiKeyInput(props: {
   return (
     <div className="flex items-center gap-2">
       <span className="w-24 text-sm">{props.label}</span>
-      <input
+      <Input
         type="password"
         value={val}
         onChange={(e) => setVal(e.target.value)}
         placeholder={props.isSet ? "•••• stored" : "paste key"}
-        className="flex-1 rounded bg-neutral-800 px-2 py-1 text-sm"
       />
-      <button
+      <Button
         onClick={async () => {
           if (val) {
             await ipc.setApiKey(props.source, val);
@@ -27,20 +28,19 @@ export default function ApiKeyInput(props: {
             props.onChanged();
           }
         }}
-        className="rounded bg-accent px-2 py-1 text-xs text-white"
       >
         Save
-      </button>
+      </Button>
       {props.isSet && (
-        <button
+        <Button
           onClick={async () => {
             await ipc.clearApiKey(props.source);
             props.onChanged();
           }}
-          className="text-xs text-muted hover:text-fg"
+          variant="destructive"
         >
           Clear
-        </button>
+        </Button>
       )}
     </div>
   );

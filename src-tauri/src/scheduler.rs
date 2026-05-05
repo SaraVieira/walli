@@ -169,8 +169,8 @@ async fn rotate_one_display(
     let kind = match src_pool.pick(&candidates) {
         Ok(k) => k,
         Err(_) => {
-            tracing::warn!("no eligible sources, falling back to favorites/history");
-            if let Some(w) = queries::random_favorite(pool)?.or(queries::random_history(pool)?) {
+            tracing::warn!("no eligible sources, falling back to history");
+            if let Some(w) = queries::random_history(pool)? {
                 apply_existing_wallpaper(app, pool, &w, display).await?;
                 return Ok(());
             }
@@ -253,7 +253,6 @@ async fn rotate_one_display(
         width: fetched.width,
         height: fetched.height,
         fetched_at: Utc::now().timestamp(),
-        is_favorite: false,
     };
     let wid = queries::upsert_wallpaper(pool, &w)?;
 

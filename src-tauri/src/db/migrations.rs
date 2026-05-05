@@ -99,6 +99,10 @@ pub const MIGRATIONS: &[&str] = &[
     SELECT 'active_collection_id', CAST(id AS TEXT)
     FROM collections WHERE name = 'Featured';
     "#,
+    // 0006 — drop favorites feature
+    r#"
+    DROP TABLE IF EXISTS favorites;
+    "#,
 ];
 
 pub fn run(conn: &mut Connection) -> rusqlite::Result<()> {

@@ -29,38 +29,15 @@ async fn upsert_wallpaper_and_history() {
         width: Some(1920),
         height: Some(1080),
         fetched_at: 1,
-        is_favorite: false,
     };
     let id = queries::upsert_wallpaper(&pool, &w).unwrap();
     assert!(id > 0);
     let id2 = queries::upsert_wallpaper(&pool, &w).unwrap();
     assert_eq!(id, id2, "upsert should return same id");
     queries::record_history(&pool, id, 100, None).unwrap();
-    let history = queries::list_history(&pool, 10, 0, false).unwrap();
+    let history = queries::list_history(&pool, 10, 0).unwrap();
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].wallpaper.source_id, "abc");
-}
-
-#[tokio::test]
-async fn favorite_toggles() {
-    let (pool, _dir) = fresh_pool().await;
-    let w = queries::Wallpaper {
-        id: 0,
-        source: "bing".into(),
-        source_id: "x".into(),
-        photographer: None,
-        title: None,
-        source_url: None,
-        file_path: "/tmp/b.jpg".into(),
-        is_local: false,
-        width: None,
-        height: None,
-        fetched_at: 0,
-        is_favorite: false,
-    };
-    let id = queries::upsert_wallpaper(&pool, &w).unwrap();
-    assert!(queries::toggle_favorite(&pool, id, 1).unwrap());
-    assert!(!queries::toggle_favorite(&pool, id, 2).unwrap());
 }
 
 #[tokio::test]

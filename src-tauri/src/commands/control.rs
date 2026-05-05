@@ -16,7 +16,7 @@ pub struct AppState {
 pub async fn get_state(app: AppHandle) -> AppResult<AppState> {
     let pool = app.state::<Pool>().inner().clone();
     let s = queries::get_settings(&pool)?;
-    let current_id = queries::list_history(&pool, 1, 0, false)?
+    let current_id = queries::list_history(&pool, 1, 0)?
         .into_iter()
         .next()
         .map(|h| h.wallpaper.id);

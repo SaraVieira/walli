@@ -12,7 +12,6 @@ export interface Wallpaper {
   width: number | null;
   height: number | null;
   fetched_at: number;
-  is_favorite: boolean;
 }
 
 export interface Collection {

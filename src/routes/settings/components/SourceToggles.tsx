@@ -1,3 +1,4 @@
+import { Checkbox } from "@/components/ui/checkbox";
 import type { Settings } from "../../../shared/types";
 
 const SOURCES: { key: keyof Settings; label: string }[] = [
@@ -13,11 +14,10 @@ export default function SourceToggles(props: {
     <div className="space-y-1 text-sm">
       {SOURCES.map(({ key, label }) => (
         <label key={key} className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={!!props.settings[key]}
-            onChange={(e) =>
-              props.onPatch({ [key]: e.target.checked } as Partial<Settings>)
+            onCheckedChange={(checked) =>
+              props.onPatch({ [key]: checked } as Partial<Settings>)
             }
           />
           {label}

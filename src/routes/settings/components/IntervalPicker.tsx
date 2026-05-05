@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
 const PRESETS = [
   { label: "15 min", s: 15 * 60 },
   { label: "30 min", s: 30 * 60 },
@@ -15,16 +18,16 @@ export default function IntervalPicker(props: {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {PRESETS.map((p) => (
-        <button
+        <Button
           key={p.s}
           onClick={() => props.onChange(p.s)}
-          className={`rounded border px-2 py-1 text-xs ${props.value === p.s ? "border-accent" : "border-neutral-700"}`}
+          variant={props.value === p.s ? "default" : "outline"}
         >
           {p.label}
-        </button>
+        </Button>
       ))}
       <label className="flex items-center gap-1 text-xs">
-        <input
+        <Input
           type="number"
           min={1}
           value={isPreset ? "" : Math.round(props.value / 60)}

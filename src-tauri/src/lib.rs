@@ -49,7 +49,6 @@ pub fn run() {
             commands::collections::delete_collection,
             commands::collections::set_active_collection,
             commands::history::list_history,
-            commands::history::toggle_favorite,
             commands::history::set_wallpaper_from_history,
             commands::history::open_history_window,
             commands::settings::get_settings,

@@ -10,20 +10,9 @@ pub async fn list_history(
     app: AppHandle,
     limit: u32,
     offset: u32,
-    favorites_only: bool,
 ) -> AppResult<Vec<queries::HistoryEntry>> {
     let pool = app.state::<Pool>().inner().clone();
-    queries::list_history(&pool, limit, offset, favorites_only)
-}
-
-#[tauri::command]
-pub async fn toggle_favorite(app: AppHandle, wallpaper_id: i64) -> AppResult<bool> {
-    let pool = app.state::<Pool>().inner().clone();
-    let new_state = queries::toggle_favorite(&pool, wallpaper_id, Utc::now().timestamp())?;
-    if let Some(w) = queries::get_wallpaper(&pool, wallpaper_id)? {
-        let _ = app.emit("wallpaper-changed", &w);
-    }
-    Ok(new_state)
+    queries::list_history(&pool, limit, offset)
 }
 
 #[tauri::command]

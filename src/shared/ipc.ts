@@ -12,8 +12,6 @@ export const ipc = {
   getState: () => invoke<AppState>("get_state"),
   nextNow: () => invoke<void>("next_now"),
   setPaused: (paused: boolean) => invoke<void>("set_paused", { paused }),
-  toggleFavorite: (wallpaperId: number) =>
-    invoke<boolean>("toggle_favorite", { wallpaperId }),
   listCollections: () => invoke<Collection[]>("list_collections"),
   createCollection: (name: string, tags: string[]) =>
     invoke<Collection>("create_collection", { name, tags }),
