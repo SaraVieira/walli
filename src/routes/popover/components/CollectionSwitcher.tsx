@@ -23,6 +23,7 @@ export default function CollectionSwitcher() {
       defaultValue={active ? String(active) : undefined}
       onValueChange={async (value) => {
         const id = Number(value);
+        useWallpaperStore.getState().beginLoading();
         await ipc.setActiveCollection(id);
         refresh();
       }}

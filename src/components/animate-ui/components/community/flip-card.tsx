@@ -60,17 +60,22 @@ export function FlipCard({ data, children }: FlipCardProps) {
 
       {/* BACK: Bio + Stats + Socials */}
       <motion.div
-        className="absolute inset-0 backface-hidden rounded-md border-2 border-foreground/20 px-4 py-6 flex flex-col justify-between items-center gap-y-4 bg-gradient-to-tr from-muted via-background to-muted "
+        className="absolute inset-0 backface-hidden px-4 py-6 flex flex-col justify-between items-center gap-y-4  from-muted via-background to-muted "
         initial={{ rotateY: 180 }}
         animate={isFlipped ? "front" : "back"}
         variants={cardVariants}
-        style={{ transformStyle: "preserve-3d", rotateY: 180 }}
+        style={{
+          transformStyle: "preserve-3d",
+          rotateY: 180,
+          backgroundImage: `url(${data.image})`,
+          backdropFilter: "blur(8px)",
+          backgroundColor: "rgba(0, 0, 0, 0.7)",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundBlendMode: "overlay",
+        }}
       >
-        <p className="text-xs md:text-sm text-muted-foreground text-center">
-          {data.bio}
-        </p>
-
-        {children ? <div className="w-full">{children}</div> : null}
+        {children ? <div className="w-full h-full">{children}</div> : null}
       </motion.div>
     </div>
   );
