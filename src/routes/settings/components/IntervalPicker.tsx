@@ -33,7 +33,7 @@ export default function IntervalPicker(props: {
           value={isPreset ? "" : Math.round(props.value / 60)}
           onChange={(e) => props.onChange(Number(e.target.value) * 60)}
           placeholder="custom min"
-          className="w-24 rounded bg-neutral-800 px-2 py-1"
+          className="w-24 "
         />
       </label>
     </div>

@@ -5,6 +5,7 @@ import IntervalPicker from "./components/IntervalPicker";
 import SourceToggles from "./components/SourceToggles";
 import ApiKeyInput from "./components/ApiKeyInput";
 import CollectionsEditor from "./components/CollectionsEditor";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function SettingsPage() {
   const { settings, collections, refresh, patch } = useSettingsStore();
@@ -44,11 +45,10 @@ export default function SettingsPage() {
 
       <section>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={settings.login_at_startup}
-            onChange={async (e) => {
-              await ipc.setLoginAtStartup(e.target.checked);
+            onCheckedChange={async (checked) => {
+              await ipc.setLoginAtStartup(Boolean(checked));
               refresh();
             }}
           />
