@@ -1,7 +1,42 @@
-# Tauri + React + Typescript
+# Walli
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+A small macOS menu-bar app that rotates your desktop wallpaper from Unsplash and Bing.
 
-## Recommended IDE Setup
+## Install
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+Grab the latest `.dmg` from [Releases](https://github.com/SaraVieira/walli/releases/latest).
+
+Because the build is ad-hoc signed (no Apple Developer ID yet), macOS Gatekeeper will block it on first launch. To open it:
+
+1. Drag `Walli.app` from the DMG into `/Applications`.
+2. Right-click `Walli.app` → **Open** → confirm in the dialog.
+
+You only need to do this once; afterwards it launches normally.
+
+## Stack
+
+Tauri 2 · React 18 · TypeScript · Tailwind · SQLite (rusqlite)
+
+## Develop
+
+```sh
+pnpm install
+pnpm tauri dev
+```
+
+## Quality gate
+
+```sh
+pnpm check                 # typecheck + lint + prettier + vitest
+cd src-tauri && cargo clippy -- -D warnings && cargo test
+```
+
+## Build
+
+```sh
+pnpm tauri build           # produces an unsigned .app and .dmg under src-tauri/target/release/bundle/
+```
+
+## Release
+
+Push to `main` → CI bumps the patch version, tags `vX.Y.Z`, and publishes a GitHub release with the `.dmg` attached.
