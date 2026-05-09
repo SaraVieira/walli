@@ -15,13 +15,14 @@ pub struct AppState {
 #[tauri::command]
 pub async fn get_state(app: AppHandle) -> AppResult<AppState> {
     let pool = app.state::<Pool>().inner().clone();
-    let s = queries::get_settings(&pool)?;
-    let current_id = queries::list_history(&pool, 1, 0)?
+    let s = queries::get_settings(&pool).await?;
+    let current_id = queries::list_history(&pool, 1, 0)
+        .await?
         .into_iter()
         .next()
         .map(|h| h.wallpaper.id);
     let current = if let Some(id) = current_id {
-        queries::get_wallpaper(&pool, id)?
+        queries::get_wallpaper(&pool, id).await?
     } else {
         None
     };
@@ -50,7 +51,7 @@ pub async fn next_now(app: AppHandle) -> AppResult<()> {
 pub async fn set_paused(app: AppHandle, paused: bool) -> AppResult<()> {
     tracing::info!(paused, "set_paused");
     let pool = app.state::<Pool>().inner().clone();
-    queries::set_setting(&pool, "paused", if paused { "true" } else { "false" })?;
+    queries::set_setting(&pool, "paused", if paused { "true" } else { "false" }).await?;
     if let Some(h) = app.try_state::<SchedulerHandle>() {
         let _ = h.tx.send(SchedulerMsg::Reschedule).await;
     }

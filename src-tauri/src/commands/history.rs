@@ -12,17 +12,18 @@ pub async fn list_history(
     offset: u32,
 ) -> AppResult<Vec<queries::HistoryEntry>> {
     let pool = app.state::<Pool>().inner().clone();
-    queries::list_history(&pool, limit, offset)
+    queries::list_history(&pool, limit, offset).await
 }
 
 #[tauri::command]
 pub async fn set_wallpaper_from_history(app: AppHandle, wallpaper_id: i64) -> AppResult<()> {
     tracing::info!(wallpaper_id, "set_wallpaper_from_history");
     let pool = app.state::<Pool>().inner().clone();
-    let w =
-        queries::get_wallpaper(&pool, wallpaper_id)?.ok_or(crate::errors::AppError::NotFound)?;
+    let w = queries::get_wallpaper(&pool, wallpaper_id)
+        .await?
+        .ok_or(crate::errors::AppError::NotFound)?;
     wallpaper_setter::set_all(std::path::Path::new(&w.file_path))?;
-    queries::record_history(&pool, w.id, Utc::now().timestamp(), None)?;
+    queries::record_history(&pool, w.id, Utc::now().timestamp(), None).await?;
     let _ = app.emit("wallpaper-changed", &w);
     if let Some(h) = app.try_state::<SchedulerHandle>() {
         let _ = h.tx.send(SchedulerMsg::Reschedule).await;

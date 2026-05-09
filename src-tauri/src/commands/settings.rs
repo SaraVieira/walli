@@ -22,10 +22,19 @@ fn b(map: &HashMap<String, String>, k: &str) -> bool {
     map.get(k).map(String::as_str) == Some("true")
 }
 
+const WRITABLE_KEYS: &[&str] = &[
+    "interval_seconds",
+    "per_display_mode",
+    "paused",
+    "active_collection_id",
+    "source_unsplash_enabled",
+    "source_bing_enabled",
+];
+
 #[tauri::command]
 pub async fn get_settings(app: AppHandle) -> AppResult<SettingsDto> {
     let pool = app.state::<Pool>().inner().clone();
-    let s = queries::get_settings(&pool)?;
+    let s = queries::get_settings(&pool).await?;
     let autostart = app.autolaunch().is_enabled().unwrap_or(false);
     Ok(SettingsDto {
         interval_seconds: s
@@ -53,6 +62,9 @@ pub async fn update_settings(app: AppHandle, patch: serde_json::Value) -> AppRes
         .as_object()
         .ok_or_else(|| AppError::Invalid("patch must be object".into()))?;
     for (k, v) in m {
+        if !WRITABLE_KEYS.contains(&k.as_str()) {
+            return Err(AppError::Invalid(format!("setting '{k}' is not writable")));
+        }
         let value_str = match v {
             serde_json::Value::Bool(b) => {
                 if *b {
@@ -66,7 +78,7 @@ pub async fn update_settings(app: AppHandle, patch: serde_json::Value) -> AppRes
             serde_json::Value::Null => "".into(),
             _ => continue,
         };
-        queries::set_setting(&pool, k, &value_str)?;
+        queries::set_setting(&pool, k, &value_str).await?;
     }
     if let Some(h) = app.try_state::<SchedulerHandle>() {
         let _ = h.tx.send(SchedulerMsg::Reschedule).await;
@@ -79,7 +91,7 @@ pub async fn update_settings(app: AppHandle, patch: serde_json::Value) -> AppRes
 pub async fn set_api_key(app: AppHandle, source: SourceKind, key: String) -> AppResult<()> {
     tracing::info!(?source, "set_api_key (length={})", key.len());
     let pool = app.state::<Pool>().inner().clone();
-    queries::set_setting(&pool, &format!("{}_api_key", source.as_str()), &key)?;
+    queries::set_setting(&pool, &format!("{}_api_key", source.as_str()), &key).await?;
     Ok(())
 }
 
@@ -87,7 +99,7 @@ pub async fn set_api_key(app: AppHandle, source: SourceKind, key: String) -> App
 pub async fn clear_api_key(app: AppHandle, source: SourceKind) -> AppResult<()> {
     tracing::info!(?source, "clear_api_key");
     let pool = app.state::<Pool>().inner().clone();
-    queries::set_setting(&pool, &format!("{}_api_key", source.as_str()), "")?;
+    queries::set_setting(&pool, &format!("{}_api_key", source.as_str()), "").await?;
     Ok(())
 }
 

@@ -70,14 +70,14 @@ pub fn install(app: &App) -> tauri::Result<()> {
                         Some(p) => p.inner().clone(),
                         None => return,
                     };
-                    let s = match queries::get_settings(&pool) {
+                    let s = match queries::get_settings(&pool).await {
                         Ok(s) => s,
                         Err(_) => return,
                     };
                     let currently_paused =
                         s.get("paused").map(String::as_str) == Some("true");
                     let new_val = if currently_paused { "false" } else { "true" };
-                    if queries::set_setting(&pool, "paused", new_val).is_err() {
+                    if queries::set_setting(&pool, "paused", new_val).await.is_err() {
                         return;
                     }
                     if let Some(h) = app.try_state::<SchedulerHandle>() {

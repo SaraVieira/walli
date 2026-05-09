@@ -33,8 +33,8 @@ pub struct Collection {
     pub tags: Vec<String>,
 }
 
-pub fn upsert_wallpaper(pool: &Pool, w: &Wallpaper) -> AppResult<i64> {
-    let conn = pool.lock().unwrap();
+pub async fn upsert_wallpaper(pool: &Pool, w: &Wallpaper) -> AppResult<i64> {
+    let conn = pool.lock().await;
     conn.execute(
         "INSERT INTO wallpapers (source, source_id, photographer, title, source_url, file_path, is_local, width, height, fetched_at)
          VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -50,21 +50,21 @@ pub fn upsert_wallpaper(pool: &Pool, w: &Wallpaper) -> AppResult<i64> {
     Ok(id)
 }
 
-pub fn mark_download_tracked(pool: &Pool, wallpaper_id: i64) -> AppResult<()> {
-    pool.lock().unwrap().execute(
+pub async fn mark_download_tracked(pool: &Pool, wallpaper_id: i64) -> AppResult<()> {
+    pool.lock().await.execute(
         "UPDATE wallpapers SET download_tracked = 1 WHERE id = ?",
         params![wallpaper_id],
     )?;
     Ok(())
 }
 
-pub fn record_history(
+pub async fn record_history(
     pool: &Pool,
     wallpaper_id: i64,
     set_at: i64,
     display_id: Option<&str>,
 ) -> AppResult<i64> {
-    let conn = pool.lock().unwrap();
+    let conn = pool.lock().await;
     conn.execute(
         "INSERT INTO history (wallpaper_id, set_at, display_id) VALUES (?,?,?)",
         params![wallpaper_id, set_at, display_id],
@@ -72,8 +72,8 @@ pub fn record_history(
     Ok(conn.last_insert_rowid())
 }
 
-pub fn list_history(pool: &Pool, limit: u32, offset: u32) -> AppResult<Vec<HistoryEntry>> {
-    let conn = pool.lock().unwrap();
+pub async fn list_history(pool: &Pool, limit: u32, offset: u32) -> AppResult<Vec<HistoryEntry>> {
+    let conn = pool.lock().await;
     let sql = "SELECT h.id, h.set_at, h.display_id, w.id, w.source, w.source_id, w.photographer, w.title, w.source_url,
                 w.file_path, w.is_local, w.width, w.height, w.fetched_at
          FROM history h JOIN wallpapers w ON w.id = h.wallpaper_id
@@ -104,8 +104,8 @@ pub fn list_history(pool: &Pool, limit: u32, offset: u32) -> AppResult<Vec<Histo
     Ok(rows)
 }
 
-pub fn get_wallpaper(pool: &Pool, id: i64) -> AppResult<Option<Wallpaper>> {
-    let conn = pool.lock().unwrap();
+pub async fn get_wallpaper(pool: &Pool, id: i64) -> AppResult<Option<Wallpaper>> {
+    let conn = pool.lock().await;
     Ok(conn.query_row(
         "SELECT w.id, w.source, w.source_id, w.photographer, w.title, w.source_url, w.file_path, w.is_local,
                 w.width, w.height, w.fetched_at
@@ -119,8 +119,8 @@ pub fn get_wallpaper(pool: &Pool, id: i64) -> AppResult<Option<Wallpaper>> {
         })).optional()?)
 }
 
-pub fn random_history(pool: &Pool) -> AppResult<Option<Wallpaper>> {
-    let conn = pool.lock().unwrap();
+pub async fn random_history(pool: &Pool) -> AppResult<Option<Wallpaper>> {
+    let conn = pool.lock().await;
     Ok(conn.query_row(
         "SELECT w.id, w.source, w.source_id, w.photographer, w.title, w.source_url, w.file_path, w.is_local,
                 w.width, w.height, w.fetched_at
@@ -136,8 +136,8 @@ pub fn random_history(pool: &Pool) -> AppResult<Option<Wallpaper>> {
         })).optional()?)
 }
 
-pub fn list_collections(pool: &Pool) -> AppResult<Vec<Collection>> {
-    let conn = pool.lock().unwrap();
+pub async fn list_collections(pool: &Pool) -> AppResult<Vec<Collection>> {
+    let conn = pool.lock().await;
     let mut stmt = conn.prepare("SELECT id, name FROM collections ORDER BY name")?;
     let cols: Vec<(i64, String)> = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
@@ -154,13 +154,13 @@ pub fn list_collections(pool: &Pool) -> AppResult<Vec<Collection>> {
     Ok(out)
 }
 
-pub fn create_collection(
+pub async fn create_collection(
     pool: &Pool,
     name: &str,
     tags: &[String],
     now: i64,
 ) -> AppResult<Collection> {
-    let mut conn = pool.lock().unwrap();
+    let mut conn = pool.lock().await;
     let tx = conn.transaction()?;
     tx.execute(
         "INSERT INTO collections (name, created_at) VALUES (?, ?)",
@@ -181,13 +181,13 @@ pub fn create_collection(
     })
 }
 
-pub fn update_collection(
+pub async fn update_collection(
     pool: &Pool,
     id: i64,
     name: &str,
     tags: &[String],
 ) -> AppResult<Collection> {
-    let mut conn = pool.lock().unwrap();
+    let mut conn = pool.lock().await;
     let tx = conn.transaction()?;
     tx.execute(
         "UPDATE collections SET name = ? WHERE id = ?",
@@ -211,22 +211,22 @@ pub fn update_collection(
     })
 }
 
-pub fn delete_collection(pool: &Pool, id: i64) -> AppResult<()> {
+pub async fn delete_collection(pool: &Pool, id: i64) -> AppResult<()> {
     pool.lock()
-        .unwrap()
+        .await
         .execute("DELETE FROM collections WHERE id = ?", params![id])?;
     Ok(())
 }
 
-pub fn get_settings(pool: &Pool) -> AppResult<HashMap<String, String>> {
-    let conn = pool.lock().unwrap();
+pub async fn get_settings(pool: &Pool) -> AppResult<HashMap<String, String>> {
+    let conn = pool.lock().await;
     let mut stmt = conn.prepare("SELECT key, value FROM settings")?;
     let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
     Ok(rows.collect::<rusqlite::Result<HashMap<_, _>>>()?)
 }
 
-pub fn set_setting(pool: &Pool, key: &str, value: &str) -> AppResult<()> {
-    pool.lock().unwrap().execute(
+pub async fn set_setting(pool: &Pool, key: &str, value: &str) -> AppResult<()> {
+    pool.lock().await.execute(
         "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         params![key, value])?;
     Ok(())

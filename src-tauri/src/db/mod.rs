@@ -1,6 +1,7 @@
 use rusqlite::Connection;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub mod migrations;
 pub mod queries;

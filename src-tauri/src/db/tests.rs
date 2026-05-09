@@ -30,12 +30,12 @@ async fn upsert_wallpaper_and_history() {
         height: Some(1080),
         fetched_at: 1,
     };
-    let id = queries::upsert_wallpaper(&pool, &w).unwrap();
+    let id = queries::upsert_wallpaper(&pool, &w).await.unwrap();
     assert!(id > 0);
-    let id2 = queries::upsert_wallpaper(&pool, &w).unwrap();
+    let id2 = queries::upsert_wallpaper(&pool, &w).await.unwrap();
     assert_eq!(id, id2, "upsert should return same id");
-    queries::record_history(&pool, id, 100, None).unwrap();
-    let history = queries::list_history(&pool, 10, 0).unwrap();
+    queries::record_history(&pool, id, 100, None).await.unwrap();
+    let history = queries::list_history(&pool, 10, 0).await.unwrap();
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].wallpaper.source_id, "abc");
 }
@@ -43,21 +43,31 @@ async fn upsert_wallpaper_and_history() {
 #[tokio::test]
 async fn collection_crud() {
     let (pool, _dir) = fresh_pool().await;
-    let baseline = queries::list_collections(&pool).unwrap().len();
+    let baseline = queries::list_collections(&pool).await.unwrap().len();
     let c = queries::create_collection(&pool, "Nature", &["mountains".into(), "forest".into()], 0)
+        .await
         .unwrap();
     assert_eq!(c.tags.len(), 2);
-    let updated = queries::update_collection(&pool, c.id, "Nature 2", &["ocean".into()]).unwrap();
+    let updated = queries::update_collection(&pool, c.id, "Nature 2", &["ocean".into()])
+        .await
+        .unwrap();
     assert_eq!(updated.tags, vec!["ocean"]);
-    assert_eq!(queries::list_collections(&pool).unwrap().len(), baseline + 1);
-    queries::delete_collection(&pool, c.id).unwrap();
-    assert_eq!(queries::list_collections(&pool).unwrap().len(), baseline);
+    assert_eq!(
+        queries::list_collections(&pool).await.unwrap().len(),
+        baseline + 1
+    );
+    queries::delete_collection(&pool, c.id).await.unwrap();
+    assert_eq!(
+        queries::list_collections(&pool).await.unwrap().len(),
+        baseline
+    );
 }
 
 #[tokio::test]
 async fn default_collections_seeded() {
     let (pool, _dir) = fresh_pool().await;
     let names: Vec<String> = queries::list_collections(&pool)
+        .await
         .unwrap()
         .into_iter()
         .map(|c| c.name)
@@ -73,9 +83,11 @@ async fn default_collections_seeded() {
 #[tokio::test]
 async fn settings_defaults_seed() {
     let (pool, _dir) = fresh_pool().await;
-    let s = queries::get_settings(&pool).unwrap();
+    let s = queries::get_settings(&pool).await.unwrap();
     assert_eq!(s.get("interval_seconds").map(String::as_str), Some("3600"));
-    queries::set_setting(&pool, "interval_seconds", "7200").unwrap();
-    let s2 = queries::get_settings(&pool).unwrap();
+    queries::set_setting(&pool, "interval_seconds", "7200")
+        .await
+        .unwrap();
+    let s2 = queries::get_settings(&pool).await.unwrap();
     assert_eq!(s2.get("interval_seconds").map(String::as_str), Some("7200"));
 }

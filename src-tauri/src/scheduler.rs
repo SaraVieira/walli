@@ -56,7 +56,7 @@ async fn run(app: AppHandle, mut rx: mpsc::Receiver<SchedulerMsg>) -> AppResult<
     let src_pool = SrcPool::new();
 
     loop {
-        let settings = queries::get_settings(&pool)?;
+        let settings = queries::get_settings(&pool).await?;
         let paused = settings.get("paused").map(String::as_str) == Some("true");
         let interval = settings
             .get("interval_seconds")
@@ -93,7 +93,7 @@ async fn run(app: AppHandle, mut rx: mpsc::Receiver<SchedulerMsg>) -> AppResult<
                     Some(SchedulerMsg::Wake) => {
                         tracing::info!("wake event received");
                         // if overdue, fire immediately
-                        let s = queries::get_settings(&pool)?;
+                        let s = queries::get_settings(&pool).await?;
                         let last2 = s.get("last_rotation_at").and_then(|x| x.parse::<i64>().ok()).unwrap_or(0);
                         let int2 = s.get("interval_seconds").and_then(|x| x.parse::<u64>().ok()).unwrap_or(3600);
                         let is_overdue = Utc::now().timestamp() - last2 >= int2 as i64;
@@ -117,7 +117,7 @@ async fn run_rotation(
     src_pool: &SrcPool,
 ) -> AppResult<()> {
     tracing::info!("rotation start");
-    let s = queries::get_settings(pool)?;
+    let s = queries::get_settings(pool).await?;
     let per_display = s.get("per_display_mode").map(String::as_str) == Some("true");
 
     if per_display {
@@ -137,7 +137,8 @@ async fn run_rotation(
         pool,
         "last_rotation_at",
         &Utc::now().timestamp().to_string(),
-    )?;
+    )
+    .await?;
     Ok(())
 }
 
@@ -148,7 +149,7 @@ async fn rotate_one_display(
     src_pool: &SrcPool,
     display: Option<(usize, &str)>,
 ) -> AppResult<()> {
-    let s = queries::get_settings(pool)?;
+    let s = queries::get_settings(pool).await?;
     let mut candidates = Vec::new();
     if s.get("source_unsplash_enabled").map(String::as_str) == Some("true")
         && s.get("unsplash_api_key")
@@ -170,7 +171,7 @@ async fn rotate_one_display(
         Ok(k) => k,
         Err(_) => {
             tracing::warn!("no eligible sources, falling back to history");
-            if let Some(w) = queries::random_history(pool)? {
+            if let Some(w) = queries::random_history(pool).await? {
                 apply_existing_wallpaper(app, pool, &w, display).await?;
                 return Ok(());
             }
@@ -187,7 +188,8 @@ async fn rotate_one_display(
         .get("active_collection_id")
         .and_then(|x| x.parse::<i64>().ok());
     let tags: Vec<String> = if let Some(id) = active_id {
-        queries::list_collections(pool)?
+        queries::list_collections(pool)
+            .await?
             .into_iter()
             .find(|c| c.id == id)
             .map(|c| c.tags)
@@ -254,7 +256,7 @@ async fn rotate_one_display(
         height: fetched.height,
         fetched_at: Utc::now().timestamp(),
     };
-    let wid = queries::upsert_wallpaper(pool, &w)?;
+    let wid = queries::upsert_wallpaper(pool, &w).await?;
 
     // Unsplash compliance ping (non-fatal)
     if let Some(dl) = &fetched.download_location {
@@ -268,7 +270,7 @@ async fn rotate_one_display(
                 Ok(_) => tracing::debug!("unsplash compliance ping sent"),
                 Err(e) => tracing::warn!(?e, "unsplash compliance ping failed"),
             }
-            queries::mark_download_tracked(pool, wid).ok();
+            queries::mark_download_tracked(pool, wid).await.ok();
         }
     }
 
@@ -278,7 +280,7 @@ async fn rotate_one_display(
     tracing::info!("wallpaper applied");
 
     if kind == SourceKind::Bing {
-        queries::set_setting(pool, "last_bing_fetch_date", &today)?;
+        queries::set_setting(pool, "last_bing_fetch_date", &today).await?;
     }
     Ok(())
 }
@@ -302,14 +304,14 @@ async fn apply_and_record(
                 std::path::Path::new(file_path),
             )
             .await?;
-            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), Some(sid))?;
+            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), Some(sid)).await?;
         }
         None => {
             wallpaper_setter::set_all(std::path::Path::new(file_path))?;
-            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), None)?;
+            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), None).await?;
         }
     }
-    let w = queries::get_wallpaper(pool, wallpaper_id)?;
+    let w = queries::get_wallpaper(pool, wallpaper_id).await?;
     if let Some(w) = w {
         let _ = app.emit("wallpaper-changed", &w);
     }
