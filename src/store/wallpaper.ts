@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { ipc, onWallpaperChanged, onError } from "../shared/ipc";
 import type { AppState, Wallpaper } from "../shared/types";
 
@@ -67,13 +68,30 @@ export const useWallpaperStore = create<State>((set) => ({
   },
 }));
 
+let bound = false;
+const unlistens: Array<Promise<UnlistenFn>> = [];
+
 export function bindWallpaperEvents() {
-  onWallpaperChanged((w: Wallpaper) => {
-    clearNextTimeout();
-    useWallpaperStore.setState({ current: w, loading: false });
-  });
-  onError((m) => {
-    clearNextTimeout();
-    useWallpaperStore.setState({ errorBanner: m, loading: false });
+  if (bound) return;
+  bound = true;
+  unlistens.push(
+    onWallpaperChanged((w: Wallpaper) => {
+      clearNextTimeout();
+      useWallpaperStore.setState({ current: w, loading: false });
+    }),
+  );
+  unlistens.push(
+    onError((m) => {
+      clearNextTimeout();
+      useWallpaperStore.setState({ errorBanner: m, loading: false });
+    }),
+  );
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    unlistens.forEach((p) => p.then((u) => u()).catch(() => {}));
+    unlistens.length = 0;
+    bound = false;
   });
 }

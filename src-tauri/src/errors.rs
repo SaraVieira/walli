@@ -8,14 +8,30 @@ pub enum AppError {
     Io(String),
     #[error("db: {0}")]
     Db(String),
-    #[error("http: {0}")]
-    Http(String),
+    #[error("http {status:?}: {message}")]
+    Http {
+        status: Option<u16>,
+        message: String,
+    },
     #[error("not found")]
     NotFound,
     #[error("invalid: {0}")]
     Invalid(String),
     #[error("internal: {0}")]
     Internal(String),
+}
+
+impl AppError {
+    /// Returns false for HTTP responses that won't change on retry
+    /// (4xx except 408 Request Timeout and 429 Too Many Requests).
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            AppError::Http {
+                status: Some(s), ..
+            } => !(*s >= 400 && *s < 500 && *s != 408 && *s != 429),
+            _ => true,
+        }
+    }
 }
 
 impl From<anyhow::Error> for AppError {
@@ -35,7 +51,10 @@ impl From<std::io::Error> for AppError {
 }
 impl From<reqwest::Error> for AppError {
     fn from(e: reqwest::Error) -> Self {
-        Self::Http(e.to_string())
+        Self::Http {
+            status: e.status().map(|s| s.as_u16()),
+            message: e.to_string(),
+        }
     }
 }
 

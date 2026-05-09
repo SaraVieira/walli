@@ -1,11 +1,10 @@
 [package]
 name = "walli"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A simple app to have random wallpapers on your desktop from Unsplash."
+authors = ["Sara Vieira"]
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
@@ -39,6 +38,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 once_cell = "1"
 url = "2"
 async-trait = "0.1"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
 wallpaper = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]

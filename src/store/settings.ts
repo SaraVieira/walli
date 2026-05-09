@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { ipc, onSettingsChanged } from "../shared/ipc";
 import type { Collection, Settings } from "../shared/types";
 
@@ -25,6 +26,21 @@ export const useSettingsStore = create<State>((set) => ({
   },
 }));
 
+let bound = false;
+const unlistens: Array<Promise<UnlistenFn>> = [];
+
 export function bindSettingsEvents() {
-  onSettingsChanged(() => useSettingsStore.getState().refresh());
+  if (bound) return;
+  bound = true;
+  unlistens.push(
+    onSettingsChanged(() => useSettingsStore.getState().refresh()),
+  );
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    unlistens.forEach((p) => p.then((u) => u()).catch(() => {}));
+    unlistens.length = 0;
+    bound = false;
+  });
 }

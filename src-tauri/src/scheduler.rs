@@ -19,7 +19,6 @@ use tokio::time::{sleep_until, Instant};
 pub enum SchedulerMsg {
     NextNow,
     Reschedule,
-    SetPaused(bool),
     Wake,
     Shutdown,
 }
@@ -89,7 +88,6 @@ async fn run(app: AppHandle, mut rx: mpsc::Receiver<SchedulerMsg>) -> AppResult<
                 match msg {
                     Some(SchedulerMsg::NextNow) => { run_rotation(&app, &pool, &cache, &src_pool).await.ok(); }
                     Some(SchedulerMsg::Reschedule) => {} // loop top recomputes
-                    Some(SchedulerMsg::SetPaused(_)) => {}
                     Some(SchedulerMsg::Wake) => {
                         tracing::info!("wake event received");
                         // if overdue, fire immediately
@@ -307,7 +305,7 @@ async fn apply_and_record(
             queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), Some(sid)).await?;
         }
         None => {
-            wallpaper_setter::set_all(std::path::Path::new(file_path))?;
+            wallpaper_setter::set_all_on_main(app, std::path::Path::new(file_path)).await?;
             queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), None).await?;
         }
     }
@@ -335,7 +333,7 @@ async fn fetch_with_retry(
     for attempt in 0..3 {
         match src.fetch(ctx).await {
             Ok(v) => return Ok(v),
-            Err(e) if attempt < 2 => {
+            Err(e) if attempt < 2 && e.is_retryable() => {
                 tracing::warn!(attempt, ?e, "retry");
                 tokio::time::sleep(delay).await;
                 delay *= 4;

@@ -27,19 +27,23 @@ pub async fn set_for_display_on_main(
         .map_err(|e| AppError::Internal(format!("main-thread reply dropped: {e}")))?
 }
 
-pub fn set_all(path: &Path) -> AppResult<()> {
+#[cfg(target_os = "macos")]
+pub async fn set_all_on_main(app: &AppHandle, path: &Path) -> AppResult<()> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let path: PathBuf = path.to_path_buf();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(per_display::set_all_screens(&path));
+    })
+    .map_err(|e| AppError::Internal(format!("run_on_main_thread: {e}")))?;
+    rx.await
+        .map_err(|e| AppError::Internal(format!("main-thread reply dropped: {e}")))?
+}
+
+#[cfg(not(target_os = "macos"))]
+pub async fn set_all_on_main(_app: &AppHandle, path: &Path) -> AppResult<()> {
     tracing::debug!(path = ?path, "setting wallpaper on all displays");
     let s = path.to_string_lossy().to_string();
-    match wallpaper::set_from_path(&s) {
-        Ok(()) => {
-            tracing::debug!(path = ?path, "wallpaper crate set_from_path ok");
-            Ok(())
-        }
-        Err(e) => {
-            tracing::warn!(path = ?path, ?e, "wallpaper crate set_from_path failed");
-            Err(AppError::Internal(format!("set_from_path: {e}")))
-        }
-    }
+    wallpaper::set_from_path(&s).map_err(|e| AppError::Internal(format!("set_from_path: {e}")))
 }
 
 #[cfg(target_os = "macos")]
@@ -74,41 +78,61 @@ pub mod per_display {
                 )));
             }
             let screen = screens.objectAtIndex(index);
-            let path_str = path.to_string_lossy();
-            let url = NSURL::fileURLWithPath(&NSString::from_str(&path_str));
-            let workspace = NSWorkspace::sharedWorkspace();
-            let opts: Retained<NSDictionary<NSString, AnyObject>> = NSDictionary::new();
-            let mut err: *mut AnyObject = std::ptr::null_mut();
-            let ok: bool = msg_send![&workspace,
-                setDesktopImageURL: &*url,
-                forScreen: &*screen,
-                options: &*opts,
-                error: &mut err];
-            if !ok {
-                if !err.is_null() {
-                    let ns_err: Retained<NSError> =
-                        Retained::from_raw(err as *mut NSError).expect("non-null NSError pointer");
-                    let desc = ns_err.localizedDescription();
-                    return Err(AppError::Internal(format!(
-                        "setDesktopImageURL failed: {desc}"
-                    )));
-                }
-                return Err(AppError::Internal("setDesktopImageURL failed".into()));
+            apply_to_screen(&screen, path)
+        }
+    }
+
+    pub fn set_all_screens(path: &Path) -> AppResult<()> {
+        tracing::debug!(path = ?path, "setting wallpaper on all screens");
+        unsafe {
+            let mtm = objc2_foundation::MainThreadMarker::new()
+                .ok_or_else(|| AppError::Internal("must be called from main thread".into()))?;
+            let screens = NSScreen::screens(mtm);
+            for i in 0..screens.count() {
+                let screen = screens.objectAtIndex(i);
+                apply_to_screen(&screen, path)?;
             }
             Ok(())
         }
+    }
+
+    unsafe fn apply_to_screen(screen: &NSScreen, path: &Path) -> AppResult<()> {
+        let path_str = path.to_string_lossy();
+        let url = NSURL::fileURLWithPath(&NSString::from_str(&path_str));
+        let workspace = NSWorkspace::sharedWorkspace();
+        let opts: Retained<NSDictionary<NSString, AnyObject>> = NSDictionary::new();
+        let mut err: *mut AnyObject = std::ptr::null_mut();
+        let ok: bool = msg_send![&workspace,
+            setDesktopImageURL: &*url,
+            forScreen: screen,
+            options: &*opts,
+            error: &mut err];
+        if !ok {
+            if !err.is_null() {
+                let ns_err: Retained<NSError> =
+                    Retained::from_raw(err as *mut NSError).expect("non-null NSError pointer");
+                let desc = ns_err.localizedDescription();
+                return Err(AppError::Internal(format!(
+                    "setDesktopImageURL failed: {desc}"
+                )));
+            }
+            return Err(AppError::Internal("setDesktopImageURL failed".into()));
+        }
+        Ok(())
     }
 }
 
 #[cfg(not(target_os = "macos"))]
 pub mod per_display {
-    use crate::errors::AppResult;
+    use crate::errors::{AppError, AppResult};
     use std::path::Path;
     pub fn screen_ids() -> AppResult<Vec<String>> {
         Ok(vec!["display-0".into()])
     }
-    pub fn set_for_display(index: usize, path: &Path) -> AppResult<()> {
-        tracing::debug!(index, path = ?path, "setting wallpaper for display");
-        super::set_all(path)
+    pub fn set_for_display(_index: usize, path: &Path) -> AppResult<()> {
+        tracing::debug!(path = ?path, "setting wallpaper for display");
+        let s = path.to_string_lossy().to_string();
+        wallpaper::set_from_path(&s)
+            .map_err(|e| AppError::Internal(format!("set_from_path: {e}")))
     }
 }

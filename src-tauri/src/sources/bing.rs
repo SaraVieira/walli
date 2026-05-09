@@ -35,8 +35,15 @@ impl WallpaperSource for Bing {
             .json()
             .await?;
         let img = resp.images.into_iter().next().ok_or(AppError::NotFound)?;
-        let path = img.url.replace("_1920x1080", "_UHD");
-        let full_url = format!("https://www.bing.com{path}");
+        let uhd_url = format!("https://www.bing.com{}", img.url.replace("_1920x1080", "_UHD"));
+        let fallback_url = format!("https://www.bing.com{}", img.url);
+        let full_url = match HTTP.head(&uhd_url).send().await {
+            Ok(r) if r.status().is_success() => uhd_url,
+            _ => {
+                tracing::debug!("bing UHD url unavailable, falling back to 1920x1080");
+                fallback_url
+            }
+        };
         Ok(FetchedImage {
             source: SourceKind::Bing,
             source_id: format!("{}-en-US", img.startdate),
