@@ -34,7 +34,7 @@ async fn upsert_wallpaper_and_history() {
     assert!(id > 0);
     let id2 = queries::upsert_wallpaper(&pool, &w).await.unwrap();
     assert_eq!(id, id2, "upsert should return same id");
-    queries::record_history(&pool, id, 100, None).await.unwrap();
+    queries::record_history(&pool, id, 100).await.unwrap();
     let history = queries::list_history(&pool, 10, 0).await.unwrap();
     assert_eq!(history.len(), 1);
     assert_eq!(history[0].wallpaper.source_id, "abc");

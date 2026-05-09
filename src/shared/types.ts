@@ -22,7 +22,6 @@ export interface Collection {
 
 export interface Settings {
   interval_seconds: number;
-  per_display_mode: boolean;
   paused: boolean;
   active_collection_id: number | null;
   source_unsplash_enabled: boolean;

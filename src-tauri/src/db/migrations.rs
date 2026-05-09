@@ -44,7 +44,6 @@ pub const MIGRATIONS: &[&str] = &[
     );
     INSERT INTO settings (key, value) VALUES
         ('interval_seconds', '3600'),
-        ('per_display_mode', 'false'),
         ('paused', 'false'),
         ('source_unsplash_enabled', 'true'),
         ('source_wallhaven_enabled', 'true'),

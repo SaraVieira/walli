@@ -115,22 +115,7 @@ async fn run_rotation(
     src_pool: &SrcPool,
 ) -> AppResult<()> {
     tracing::info!("rotation start");
-    let s = queries::get_settings(pool).await?;
-    let per_display = s.get("per_display_mode").map(String::as_str) == Some("true");
-
-    if per_display {
-        let ids = wallpaper_setter::screen_ids_on_main(app).await?;
-        for (i, sid) in ids.iter().enumerate() {
-            if let Err(e) =
-                rotate_one_display(app, pool, cache, src_pool, Some((i, sid.as_str()))).await
-            {
-                tracing::warn!(?e, sid = %sid, "per-display rotation failed");
-            }
-        }
-    } else {
-        rotate_one_display(app, pool, cache, src_pool, None).await?;
-    }
-
+    rotate_one_display(app, pool, cache, src_pool).await?;
     queries::set_setting(
         pool,
         "last_rotation_at",
@@ -145,7 +130,6 @@ async fn rotate_one_display(
     pool: &Pool,
     cache: &Cache,
     src_pool: &SrcPool,
-    display: Option<(usize, &str)>,
 ) -> AppResult<()> {
     let s = queries::get_settings(pool).await?;
     let mut candidates = Vec::new();
@@ -170,7 +154,7 @@ async fn rotate_one_display(
         Err(_) => {
             tracing::warn!("no eligible sources, falling back to history");
             if let Some(w) = queries::random_history(pool).await? {
-                apply_existing_wallpaper(app, pool, &w, display).await?;
+                apply_existing_wallpaper(app, pool, &w).await?;
                 return Ok(());
             }
             tracing::error!("no fallback wallpaper available");
@@ -272,9 +256,8 @@ async fn rotate_one_display(
         }
     }
 
-    let display_dbg = display.map(|(i, sid)| (i, sid.to_string()));
-    tracing::info!(file_path = %file_path, display = ?display_dbg, "applying wallpaper");
-    apply_and_record(app, pool, wid, &file_path, display).await?;
+    tracing::info!(file_path = %file_path, "applying wallpaper");
+    apply_and_record(app, pool, wid, &file_path).await?;
     tracing::info!("wallpaper applied");
 
     if kind == SourceKind::Bing {
@@ -292,23 +275,9 @@ async fn apply_and_record(
     pool: &Pool,
     wallpaper_id: i64,
     file_path: &str,
-    display: Option<(usize, &str)>,
 ) -> AppResult<()> {
-    match display {
-        Some((index, sid)) => {
-            wallpaper_setter::set_for_display_on_main(
-                app,
-                index,
-                std::path::Path::new(file_path),
-            )
-            .await?;
-            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), Some(sid)).await?;
-        }
-        None => {
-            wallpaper_setter::set_all_on_main(app, std::path::Path::new(file_path)).await?;
-            queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), None).await?;
-        }
-    }
+    wallpaper_setter::set_all_on_main(app, std::path::Path::new(file_path)).await?;
+    queries::record_history(pool, wallpaper_id, Utc::now().timestamp()).await?;
     let w = queries::get_wallpaper(pool, wallpaper_id).await?;
     if let Some(w) = w {
         let _ = app.emit("wallpaper-changed", &w);
@@ -320,9 +289,8 @@ async fn apply_existing_wallpaper(
     app: &AppHandle,
     pool: &Pool,
     w: &queries::Wallpaper,
-    display: Option<(usize, &str)>,
 ) -> AppResult<()> {
-    apply_and_record(app, pool, w.id, &w.file_path, display).await
+    apply_and_record(app, pool, w.id, &w.file_path).await
 }
 
 async fn fetch_with_retry(

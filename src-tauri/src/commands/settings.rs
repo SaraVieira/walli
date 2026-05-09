@@ -9,7 +9,6 @@ use tauri_plugin_autostart::ManagerExt;
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct SettingsDto {
     pub interval_seconds: u64,
-    pub per_display_mode: bool,
     pub paused: bool,
     pub active_collection_id: Option<i64>,
     pub source_unsplash_enabled: bool,
@@ -24,7 +23,6 @@ fn b(map: &HashMap<String, String>, k: &str) -> bool {
 
 const WRITABLE_KEYS: &[&str] = &[
     "interval_seconds",
-    "per_display_mode",
     "paused",
     "active_collection_id",
     "source_unsplash_enabled",
@@ -41,7 +39,6 @@ pub async fn get_settings(app: AppHandle) -> AppResult<SettingsDto> {
             .get("interval_seconds")
             .and_then(|x| x.parse().ok())
             .unwrap_or(3600),
-        per_display_mode: b(&s, "per_display_mode"),
         paused: b(&s, "paused"),
         active_collection_id: s.get("active_collection_id").and_then(|x| x.parse().ok()),
         source_unsplash_enabled: b(&s, "source_unsplash_enabled"),

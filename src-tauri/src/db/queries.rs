@@ -58,16 +58,11 @@ pub async fn mark_download_tracked(pool: &Pool, wallpaper_id: i64) -> AppResult<
     Ok(())
 }
 
-pub async fn record_history(
-    pool: &Pool,
-    wallpaper_id: i64,
-    set_at: i64,
-    display_id: Option<&str>,
-) -> AppResult<i64> {
+pub async fn record_history(pool: &Pool, wallpaper_id: i64, set_at: i64) -> AppResult<i64> {
     let conn = pool.lock().await;
     conn.execute(
-        "INSERT INTO history (wallpaper_id, set_at, display_id) VALUES (?,?,?)",
-        params![wallpaper_id, set_at, display_id],
+        "INSERT INTO history (wallpaper_id, set_at) VALUES (?,?)",
+        params![wallpaper_id, set_at],
     )?;
     Ok(conn.last_insert_rowid())
 }
