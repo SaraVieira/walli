@@ -32,8 +32,9 @@ jobs:
       - name: Build (frontend + tauri bundle)
         run: pnpm tauri build
         env:
-          # Skip code signing in CI; produces an unsigned .app
-          APPLE_SIGNING_IDENTITY: ""
+          # Ad-hoc sign on CI ("-" tells codesign to use an ephemeral identity).
+          # Replace with a Developer ID once you wire the signing secrets.
+          APPLE_SIGNING_IDENTITY: "-"
 
       - uses: actions/upload-artifact@v4
         with:
