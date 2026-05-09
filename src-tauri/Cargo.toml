@@ -1,6 +1,6 @@
 [package]
 name = "walli"
-version = "0.1.0"
+version = "0.1.1"
 description = "A simple app to have random wallpapers on your desktop from Unsplash."
 authors = ["Sara Vieira"]
 edition = "2021"
