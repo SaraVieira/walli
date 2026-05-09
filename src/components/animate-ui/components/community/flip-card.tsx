@@ -15,7 +15,7 @@ interface FlipCardProps {
 }
 
 export function FlipCard({ data, children }: FlipCardProps) {
-  const [isFlipped, setIsFlipped] = React.useState(true);
+  const [isFlipped, setIsFlipped] = React.useState(false);
 
   const isTouchDevice =
     typeof window !== "undefined" && "ontouchstart" in window;
