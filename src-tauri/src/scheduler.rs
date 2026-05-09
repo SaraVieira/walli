@@ -2,7 +2,7 @@ use crate::cache::Cache;
 use crate::db::{queries, Pool};
 use crate::errors::{AppError, AppResult};
 use crate::sources::{
-    bing::Bing, http::HTTP, pool::Pool as SrcPool, unsplash::Unsplash, FetchContext, FetchedImage,
+    bing::Bing, http::HTTP, pool::SourcePool, unsplash::Unsplash, FetchContext, FetchedImage,
     SourceKind, WallpaperSource,
 };
 use crate::wallpaper_setter;
@@ -52,7 +52,7 @@ pub async fn start(app: AppHandle) -> anyhow::Result<SchedulerHandle> {
 async fn run(app: AppHandle, mut rx: mpsc::Receiver<SchedulerMsg>) -> AppResult<()> {
     let pool: Arc<Pool> = Arc::new(app.state::<Pool>().inner().clone());
     let cache: Arc<Cache> = Arc::new(app.state::<Cache>().inner().clone());
-    let src_pool = SrcPool::new();
+    let src_pool = SourcePool::new();
 
     loop {
         let settings = queries::get_settings(&pool).await?;
@@ -112,7 +112,7 @@ async fn run_rotation(
     app: &AppHandle,
     pool: &Pool,
     cache: &Cache,
-    src_pool: &SrcPool,
+    src_pool: &SourcePool,
 ) -> AppResult<()> {
     tracing::info!("rotation start");
     rotate_one_display(app, pool, cache, src_pool).await?;
@@ -129,7 +129,7 @@ async fn rotate_one_display(
     app: &AppHandle,
     pool: &Pool,
     cache: &Cache,
-    src_pool: &SrcPool,
+    src_pool: &SourcePool,
 ) -> AppResult<()> {
     let s = queries::get_settings(pool).await?;
     let mut candidates = Vec::new();
@@ -215,14 +215,15 @@ async fn rotate_one_display(
         .image_url
         .clone()
         .ok_or_else(|| AppError::Invalid("no image url".into()))?;
-    let bytes = HTTP
-        .get(&url)
-        .send()
-        .await?
-        .error_for_status()?
-        .bytes()
-        .await?;
-    let p = cache.write(&bytes, &fetched.ext)?;
+    let resp = HTTP.get(&url).send().await?.error_for_status()?;
+    let ct_ext = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .and_then(content_type_to_ext);
+    let bytes = resp.bytes().await?;
+    let ext = ct_ext.unwrap_or_else(|| fetched.ext.clone());
+    let p = cache.write(&bytes, &ext)?;
     let file_path = p.to_string_lossy().to_string();
 
     let w = queries::Wallpaper {
@@ -268,6 +269,18 @@ async fn rotate_one_display(
 
 fn ctx_key_for(ctx: &FetchContext, kind: SourceKind) -> Option<&str> {
     ctx.api_keys.get(&kind).map(|s| s.as_str())
+}
+
+fn content_type_to_ext(ct: &str) -> Option<String> {
+    let mime = ct.split(';').next()?.trim().to_ascii_lowercase();
+    match mime.as_str() {
+        "image/jpeg" | "image/jpg" => Some("jpg".into()),
+        "image/png" => Some("png".into()),
+        "image/webp" => Some("webp".into()),
+        "image/gif" => Some("gif".into()),
+        "image/heic" => Some("heic".into()),
+        _ => None,
+    }
 }
 
 async fn apply_and_record(

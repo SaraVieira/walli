@@ -16,7 +16,7 @@ export default function PopoverPage() {
       <CurrentCard />
       <div className="px-4 flex flex-col ">
         <CollectionSwitcher />
-        <div className="flex text-xs ttext-muted-foreground justify-between mt-4">
+        <div className="flex text-xs text-muted-foreground justify-between mt-4">
           <button
             onClick={() => ipc.openSettings()}
             className="hover:text-foreground cursor-pointer"

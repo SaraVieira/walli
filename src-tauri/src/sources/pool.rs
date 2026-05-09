@@ -11,11 +11,11 @@ pub struct CooldownState {
 }
 
 #[derive(Clone, Default)]
-pub struct Pool {
+pub struct SourcePool {
     state: Arc<Mutex<CooldownState>>,
 }
 
-impl Pool {
+impl SourcePool {
     pub fn new() -> Self {
         Self::default()
     }
@@ -49,7 +49,7 @@ mod tests {
 
     #[test]
     fn cooldown_excludes_source() {
-        let p = Pool::new();
+        let p = SourcePool::new();
         p.cooldown(SourceKind::Unsplash, Duration::from_secs(60));
         let elig = p.eligible(&[SourceKind::Unsplash, SourceKind::Bing]);
         assert_eq!(elig, vec![SourceKind::Bing]);
@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn pick_errors_when_empty() {
-        let p = Pool::new();
+        let p = SourcePool::new();
         assert!(p.pick(&[]).is_err());
     }
 }
