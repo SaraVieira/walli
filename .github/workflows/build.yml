@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: tauri build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build (frontend + tauri bundle)
+        run: pnpm tauri build
+        env:
+          # Skip code signing in CI; produces an unsigned .app
+          APPLE_SIGNING_IDENTITY: ""
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: walli-macos
+          path: |
+            src-tauri/target/release/bundle/macos/*.app
+            src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: warn
