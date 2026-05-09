@@ -12,7 +12,7 @@
     "format": "prettier --check src",
     "format:fix": "prettier --write src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.8",

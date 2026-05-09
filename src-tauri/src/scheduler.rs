@@ -121,7 +121,7 @@ async fn run_rotation(
     let per_display = s.get("per_display_mode").map(String::as_str) == Some("true");
 
     if per_display {
-        let ids = wallpaper_setter::per_display::screen_ids()?;
+        let ids = wallpaper_setter::screen_ids_on_main(app).await?;
         for (i, sid) in ids.iter().enumerate() {
             if let Err(e) =
                 rotate_one_display(app, pool, cache, src_pool, Some((i, sid.as_str()))).await
@@ -296,7 +296,12 @@ async fn apply_and_record(
 ) -> AppResult<()> {
     match display {
         Some((index, sid)) => {
-            wallpaper_setter::per_display::set_for_display(index, std::path::Path::new(file_path))?;
+            wallpaper_setter::set_for_display_on_main(
+                app,
+                index,
+                std::path::Path::new(file_path),
+            )
+            .await?;
             queries::record_history(pool, wallpaper_id, Utc::now().timestamp(), Some(sid))?;
         }
         None => {

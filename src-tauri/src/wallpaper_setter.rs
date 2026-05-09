@@ -1,5 +1,31 @@
 use crate::errors::{AppError, AppResult};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use tauri::AppHandle;
+
+pub async fn screen_ids_on_main(app: &AppHandle) -> AppResult<Vec<String>> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(per_display::screen_ids());
+    })
+    .map_err(|e| AppError::Internal(format!("run_on_main_thread: {e}")))?;
+    rx.await
+        .map_err(|e| AppError::Internal(format!("main-thread reply dropped: {e}")))?
+}
+
+pub async fn set_for_display_on_main(
+    app: &AppHandle,
+    index: usize,
+    path: &Path,
+) -> AppResult<()> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    let path: PathBuf = path.to_path_buf();
+    app.run_on_main_thread(move || {
+        let _ = tx.send(per_display::set_for_display(index, &path));
+    })
+    .map_err(|e| AppError::Internal(format!("run_on_main_thread: {e}")))?;
+    rx.await
+        .map_err(|e| AppError::Internal(format!("main-thread reply dropped: {e}")))?
+}
 
 pub fn set_all(path: &Path) -> AppResult<()> {
     tracing::debug!(path = ?path, "setting wallpaper on all displays");
