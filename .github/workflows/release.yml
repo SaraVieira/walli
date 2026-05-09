@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# Avoid races if multiple commits land in quick succession.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Skip if the push *was* the bump commit (prevents an infinite loop).
+    if: "!contains(github.event.head_commit.message, 'chore: release')"
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # Use a token that can push back to main.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Bump patch version
+        id: bump
+        run: |
+          set -euo pipefail
+          OLD=$(node -p "require('./package.json').version")
+          NEW=$(node -e "const [a,b,c]=require('./package.json').version.split('.');console.log(\`\${a}.\${b}.\${Number(c)+1}\`)")
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=v$NEW" >> "$GITHUB_OUTPUT"
+
+          # package.json
+          node -e "const fs=require('fs');const p=require('./package.json');p.version='$NEW';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+
+          # tauri.conf.json
+          node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const j=JSON.parse(fs.readFileSync(p));j.version='$NEW';fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')"
+
+          # Cargo.toml — line-level edit on the [package] version
+          sed -i '' -E '/^\[package\]/,/^\[/ s/^version = ".*"/version = "'"$NEW"'"/' src-tauri/Cargo.toml
+
+          # Refresh lockfile so cargo doesn't choke on the version mismatch.
+          (cd src-tauri && cargo update -p walli)
+
+      - name: Commit + tag
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+          git commit -m "chore: release ${{ steps.bump.outputs.tag }}"
+          git tag ${{ steps.bump.outputs.tag }}
+          git push origin HEAD:main --follow-tags
+
+      - name: Build + publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Ad-hoc sign until you wire a Developer ID.
+          APPLE_SIGNING_IDENTITY: "-"
+        with:
+          tagName: ${{ steps.bump.outputs.tag }}
+          releaseName: ${{ steps.bump.outputs.tag }}
+          releaseBody: "Automated release for ${{ steps.bump.outputs.tag }}."
+          releaseDraft: false
+          prerelease: false
